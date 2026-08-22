@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>空码录入 · ToolForge</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%2300d4ff' width='100' height='100' rx='15'/><text x='50' y='68' text-anchor='middle' font-size='55' fill='white'>Q</text></svg>">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+    <script>
+    // jsQR - try CDN, if fails we'll show a message
+    window.jsQR_loaded = false;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js" onload="window.jsQR_loaded=true;" onerror="console.warn('jsQR CDN load failed')"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--accent:#00d4ff;--accent2:#0090ff;--bg:#0a0e27;--card:rgba(20,25,50,0.85);--card2:rgba(15,20,42,0.95);--bg2:rgba(12,16,42,0.7);--border:rgba(0,212,255,0.12);--border-hover:rgba(0,212,255,0.3);--text:#e0e0e0;--text2:#b8bcd4;--muted:#6b7094;--danger:#ff4757;--success:#2ed573;--warning:#ffa502;--radius:12px}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+        .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);background-size:60px 60px;z-index:0}
+        .bg-glow{position:fixed;width:600px;height:600px;border-radius:50%;filter:blur(120px);z-index:0;pointer-events:none}
+        .glow1{background:rgba(0,212,255,0.08);top:-200px;left:-100px}
+        .glow2{background:rgba(255,0,128,0.06);bottom:-200px;right:-100px}
+        .container{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:32px 20px}
+
+        .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+        .global-back-btn{position:fixed;top:14px;left:14px;z-index:1000;display:inline-flex;align-items:center;gap:4px;padding:8px 16px;background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.3);color:#00d4ff;font-size:13px;font-weight:600;border-radius:10px;text-decoration:none;cursor:pointer;transition:all .2s;backdrop-filter:blur(8px)}
+        .global-back-btn:hover{background:rgba(0,212,255,.22);border-color:#00d4ff;color:#fff;transform:translateX(-2px);box-shadow:0 2px 12px rgba(0,212,255,.25)}
+        .header-left{display:flex;align-items:center;gap:12px}
+        .header-logo{width:42px;height:42px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff}
+        .header h1{font-size:26px;font-weight:800;color:#fff}
+        .header h1 span{color:var(--accent)}
+        .header-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+        /* Tab bar */
+        .tab-bar{display:flex;gap:0;margin-bottom:20px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:4px;backdrop-filter:blur(10px)}
+        .tab-btn{flex:1;padding:12px 16px;background:transparent;border:none;color:var(--muted);font-size:14px;font-weight:600;cursor:pointer;border-radius:10px;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit}
+        .tab-btn:hover{color:var(--text);background:rgba(0,212,255,0.05)}
+        .tab-btn.active{color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 4px 15px rgba(0,212,255,0.2)}
+        .tab-content{display:none}
+        .tab-content.active{display:block}
+
+        /* ===== PANEL / FORM BASE ===== */
+        .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;backdrop-filter:blur(10px);margin-bottom:16px}
+        .panel-title{font-size:15px;font-weight:700;color:#fff;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+        .panel-title .sub{font-size:12px;color:var(--muted);font-weight:400}
+        .form-group{margin-bottom:14px}
+        .form-group label{font-size:12px;color:var(--muted);margin-bottom:5px;display:block}
+        .form-input,.form-select{width:100%;background:rgba(10,14,39,0.8);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:13px;padding:10px 14px;outline:none;transition:border-color .2s;font-family:inherit}
+        .form-input:focus,.form-select:focus{border-color:var(--accent)}
+        textarea.form-input{resize:vertical;min-height:80px}
+        .form-row{display:flex;gap:12px;flex-wrap:wrap}
+        .form-row .form-group{flex:1}
+        .form-hint{font-size:11px;color:var(--muted);margin-top:4px}
+        .color-row{display:flex;gap:12px}
+        .color-row .form-group{flex:1}
+        .color-picker-wrap{display:flex;align-items:center;gap:8px}
+        input[type="color"]{width:32px;height:32px;border:2px solid var(--border);border-radius:8px;cursor:pointer;background:transparent;padding:2px}
+        .color-hex{font-size:12px;color:var(--muted)}
+        .slider-wrap{display:flex;align-items:center;gap:12px}
+        input[type="range"]{flex:1;accent-color:var(--accent);height:4px}
+        .slider-val{font-size:13px;color:var(--accent);min-width:55px;text-align:right}
+
+        /* Buttons */
+        .btn{padding:10px 18px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:14px;font-weight:600;border:none;border-radius:10px;cursor:pointer;transition:transform .15s,box-shadow .15s;font-family:inherit}
+        .btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,212,255,0.25)}
+        .btn:active{transform:scale(0.97)}
+        .btn:disabled{opacity:0.5;pointer-events:none;transform:none}
+        .btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
+        .btn-outline{background:rgba(0,212,255,0.12);border:1px solid rgba(0,212,255,0.3);color:var(--accent);box-shadow:none}
+        .btn-outline:hover{background:rgba(0,212,255,0.2);border-color:var(--accent)}
+        .btn-danger{background:rgba(255,71,87,0.15);border:1px solid rgba(255,71,87,0.3);color:var(--danger)}
+        .btn-danger:hover{background:rgba(255,71,87,0.25)}
+        .btn-full{width:100%}
+        .btn-ghost{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:4px 8px;transition:color .2s}
+        .btn-ghost:hover{color:var(--accent)}
+
+        /* Scan panel */
+        .scan-area{display:flex;gap:20px;flex-wrap:wrap}
+        .scan-col{flex:1;min-width:280px}
+        .scan-video-wrap{position:relative;width:100%;max-width:400px;margin:0 auto;border-radius:12px;overflow:hidden;border:2px solid var(--border);background:#000}
+        .scan-video-wrap video{width:100%;display:block}
+        .scan-video-wrap canvas{display:none}
+        .scan-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+        .scan-frame{width:60%;height:60%;border:2px dashed var(--accent);border-radius:12px;opacity:0.6}
+        .scan-status{text-align:center;margin-top:12px;font-size:13px;color:var(--muted);line-height:1.5}
+        .scan-status.error{color:var(--danger)}
+        .scan-buttons{text-align:center;margin-top:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+        .upload-area{display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed var(--border);border-radius:12px;padding:30px 20px;text-align:center;cursor:pointer;transition:all .2s;background:rgba(10,14,39,0.5);min-height:160px}
+        .upload-area:hover{border-color:var(--accent);background:rgba(0,212,255,0.05)}
+        .upload-area .icon{font-size:40px;margin-bottom:8px}
+        .upload-area .text{font-size:13px;color:var(--muted)}
+        .upload-area .hint{font-size:11px;color:var(--muted);margin-top:4px;opacity:0.7}
+        .upload-preview{width:100%;max-width:200px;margin:10px auto 0;border-radius:8px;display:none}
+
+        /* Search panel */
+        .search-wrap{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+        .search-input{flex:1;min-width:200px;background:rgba(10,14,39,0.8);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:15px;padding:12px 16px;outline:none;font-family:monospace;letter-spacing:1px;transition:border-color .2s}
+        .search-input:focus{border-color:var(--accent);background:rgba(10,14,39,0.95)}
+        .search-input::placeholder{color:var(--muted);letter-spacing:0;font-family:inherit}
+        .search-hint{font-size:12px;color:var(--muted);margin-top:8px}
+
+        /* ===== CONTENT DISPLAY (for bound codes) ===== */
+        .content-display{display:none;margin-top:16px}
+        .content-display.show{display:block}
+        .content-frame{background:#fff;border-radius:12px;border:1px solid var(--border);overflow:hidden;min-height:300px}
+        .content-frame iframe{width:100%;height:500px;border:none}
+        .content-frame .raw-content{padding:24px;color:#222;font-size:15px;line-height:1.8;word-break:break-word}
+        .content-frame .raw-content img{max-width:100%;border-radius:8px}
+        .content-frame .raw-content h1{font-size:22px;margin:8px 0}
+        .content-frame .raw-content h2{font-size:18px;margin:6px 0}
+        .content-frame .raw-content pre{background:#f5f5f5;padding:12px;border-radius:8px;overflow:auto;font-size:13px;font-family:monospace}
+        .content-frame .raw-content blockquote{border-left:3px solid #00d4ff;margin:8px 0;padding:4px 16px;color:#666}
+        .content-frame .raw-content code{background:#f0f0f0;padding:2px 6px;border-radius:4px;font-size:13px}
+
+        /* ===== EDIT SECTION (shown after lookup for unbound codes) ===== */
+        .edit-section{display:none;margin-top:16px}
+        .edit-section.show{display:block}
+        .detail-tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:0}
+        .detail-tab{padding:8px 16px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;background:transparent;border-top:none;border-left:none;border-right:none;font-family:inherit}
+        .detail-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+        .detail-tab:hover{color:var(--text)}
+        .detail-tab-content{display:none}
+        .detail-tab-content.active{display:block}
+        .detail-section-title{font-size:13px;font-weight:700;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px}
+        .detail-qr-large{display:flex;justify-content:center;margin-bottom:18px}
+        .detail-qr-large canvas{border-radius:10px;border:1px solid var(--border)}
+        .detail-preview{background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:10px;height:200px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;overflow:hidden}
+        .detail-preview iframe{width:100%;height:100%;border:none}
+
+        /* Code info bar */
+        .code-info-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;background:rgba(0,212,255,0.06);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;font-size:13px}
+        .code-info-bar .code-badge{font-family:monospace;background:rgba(0,212,255,0.15);color:var(--accent);padding:3px 10px;border-radius:6px;font-size:14px;font-weight:700}
+        .code-info-bar .stat{color:var(--text2);font-size:12px}
+        .code-info-bar .stat b{color:#fff}
+        .expired-badge{background:rgba(255,71,87,0.15);color:var(--danger);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+        .maxed-badge{background:rgba(255,165,2,0.15);color:var(--warning);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+        .unbound-badge{background:rgba(0,212,255,0.12);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+
+        /* Result messages */
+        .result-msg{text-align:center;padding:30px 20px;border-radius:12px;margin-top:12px}
+        .result-msg .big-icon{font-size:48px;margin-bottom:12px}
+        .result-msg .title{font-size:18px;font-weight:700;margin-bottom:6px}
+        .result-msg .desc{font-size:13px;color:var(--muted);line-height:1.6}
+        .result-msg.success{background:rgba(46,213,115,0.06);border:1px solid rgba(46,213,115,0.2)}
+        .result-msg.success .title{color:var(--success)}
+        .result-msg.error{background:rgba(255,71,87,0.06);border:1px solid rgba(255,71,87,0.2)}
+        .result-msg.error .title{color:var(--danger)}
+        .result-msg.warning{background:rgba(255,165,2,0.06);border:1px solid rgba(255,165,2,0.2)}
+        .result-msg.warning .title{color:var(--warning)}
+        .result-msg.info{background:rgba(0,212,255,0.06);border:1px solid rgba(0,212,255,0.2)}
+
+        /* ===== EDIT TYPE CARDS ===== */
+        .edit-type-cards{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;flex-direction:row}
+        .edit-type-card{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;border:2px solid var(--border);background:var(--bg);cursor:pointer;transition:all .2s;flex:1;min-width:180px}
+        .edit-type-card:hover{border-color:var(--accent);background:rgba(0,212,255,0.04)}
+        .edit-type-card.active{border-color:var(--accent);background:rgba(0,212,255,0.08);box-shadow:0 0 0 1px rgba(0,212,255,0.15)}
+        .edit-type-card input{display:none}
+        .type-icon{font-size:24px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:var(--bg2);border-radius:10px;flex-shrink:0}
+        .type-name{font-weight:600;font-size:14px;color:var(--text)}
+        .type-desc{font-size:11px;color:var(--muted);margin-left:auto}
+
+        /* ===== RICH TEXT EDITOR ===== */
+        .rich-editor-toolbar{display:flex;gap:2px;padding:6px 8px;margin-bottom:6px;background:var(--bg2);border-radius:10px 10px 0 0;border:1px solid var(--border);border-bottom:none;flex-wrap:wrap;align-items:center;position:sticky;top:0;z-index:5}
+        .rich-btn{width:28px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;background:none;color:var(--muted);font-size:12px;border-radius:4px;cursor:pointer;font-family:inherit;transition:all .15s;position:relative}
+        .rich-btn:hover{background:rgba(0,212,255,0.08);color:var(--accent);border-color:rgba(0,212,255,0.2)}
+        .rich-btn:active,.rich-btn.active{background:rgba(0,212,255,0.15);color:var(--accent)}
+        .rich-btn.rich-btn-icon{font-size:14px;font-weight:500}
+        .rich-btn.rich-btn-bold{font-weight:700}
+        .rich-btn.rich-btn-italic{font-style:italic;font-family:Georgia,serif}
+        .rich-btn-color{position:relative;overflow:visible}
+        .rich-btn-color::after{content:'';position:absolute;bottom:2px;left:6px;right:6px;height:3px;border-radius:2px}
+        .rich-btn-color-text::after{background:var(--color-preview,var(--text))}
+        .rich-btn-color-bg::after{background:var(--color-preview-bg,#ff0)}
+        .rich-btn-color input[type=color]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+        .rich-sep{width:1px;height:18px;background:var(--border);margin:0 5px;align-self:center}
+        .rich-select{padding:2px 4px;font-size:11px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);cursor:pointer;height:26px;outline:none;max-width:70px}
+        .rich-select:focus{border-color:var(--accent)}
+        .rich-editor{min-height:220px;max-height:420px;padding:16px;border:2px solid var(--border);border-radius:0 0 10px 10px;background:var(--bg);color:var(--text);font-size:15px;line-height:1.8;outline:none;transition:border-color .2s;overflow:auto;border-top-color:var(--border)}
+        .rich-editor:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,0.08)}
+        .rich-editor:empty:before{content:attr(placeholder);color:var(--muted);pointer-events:none}
+        .rich-editor h1{font-size:2em;font-weight:700;margin:.3em 0}
+        .rich-editor h2{font-size:1.5em;font-weight:700;margin:.3em 0}
+        .rich-editor h3{font-size:1.17em;font-weight:700;margin:.3em 0}
+        .rich-editor pre{background:var(--bg2);padding:12px;border-radius:6px;font-family:monospace;overflow-x:auto}
+        .rich-editor blockquote{border-left:3px solid var(--accent);margin:8px 0;padding:4px 12px;color:var(--muted)}
+        .rich-editor ol,.rich-editor ul{padding-left:24px}
+
+        /* ===== IMAGE UPLOAD ===== */
+        .image-upload-area{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:36px 20px;border:2px dashed var(--border);border-radius:12px;cursor:pointer;transition:all .2s;text-align:center;color:var(--muted);font-size:14px}
+        .image-upload-area:hover{border-color:var(--accent);background:rgba(0,212,255,0.03)}
+        .upload-icon{font-size:32px;margin-bottom:4px}
+
+        /* ===== MARKDOWN EDITOR ===== */
+        .md-editor-wrap{display:flex;border:2px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .2s;min-height:380px}
+        .md-editor-wrap:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,0.08)}
+        .md-editor-pane-left{flex:1;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--border)}
+        .md-editor-textarea{flex:1;padding:14px;border:none;outline:none;resize:none;font-family:'Cascadia Code','Fira Code','JetBrains Mono',Consolas,monospace;font-size:13px;line-height:1.7;background:var(--bg);color:var(--text);tab-size:2}
+        .md-editor-pane-right{flex:1;min-width:0;overflow:auto;padding:16px;background:var(--bg2);font-size:14px;line-height:1.7;color:var(--text)}
+        .md-editor-pane-right h1,.md-editor-pane-right h2,.md-editor-pane-right h3{margin:0 0 10px;font-weight:700}
+        .md-editor-pane-right h1{font-size:22px;border-bottom:2px solid var(--border);padding-bottom:8px}
+        .md-editor-pane-right h2{font-size:18px}.md-editor-pane-right h3{font-size:15px}
+        .md-editor-pane-right p{margin:0 0 10px}
+        .md-editor-pane-right code{background:var(--bg);padding:2px 6px;border-radius:4px;font-size:12px;font-family:monospace}
+        .md-editor-pane-right pre{background:var(--bg);padding:12px;border-radius:8px;overflow:auto;font-size:12px;line-height:1.5}
+        .md-editor-pane-right pre code{padding:0;background:none}
+        .md-editor-pane-right blockquote{border-left:3px solid var(--accent);margin:10px 0;padding:4px 14px;color:var(--muted)}
+        .md-editor-pane-right ul,.md-editor-pane-right ol{padding-left:24px;margin:8px 0}
+        .md-editor-pane-right img{max-width:100%;border-radius:8px}
+        .md-editor-pane-right a{color:var(--accent)}
+        .md-editor-pane-right hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+        .md-editor-empty{color:var(--muted);font-style:italic;display:flex;align-items:center;justify-content:center;height:100%}
+
+        /* Toast / Spinner / Footer */
+        .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;transition:all .3s;opacity:0;pointer-events:none}
+        .toast.show{opacity:1}
+        .toast.success{background:#1a3a2a;border:1px solid var(--success);color:var(--success)}
+        .toast.error{background:#3a1a1a;border:1px solid var(--danger);color:var(--danger)}
+        .spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .footer{text-align:center;padding:20px 0;position:relative;z-index:1}
+        .footer-cta{display:inline-block;padding:8px 20px;border:1px solid var(--border);border-radius:10px;color:var(--muted);font-size:12px;text-decoration:none;transition:all .2s;margin-top:8px}
+        .footer-cta:hover{color:var(--accent);border-color:var(--accent)}
+        .footer a{color:var(--accent);text-decoration:none}
+
+        @media(max-width:768px){
+            .scan-area{flex-direction:column}
+            .md-editor-wrap{flex-direction:column;min-height:300px}
+            .md-editor-pane-left{border-right:none;border-bottom:1px solid var(--border);max-height:200px}
+            .md-editor-pane-right{max-height:200px}
+            .edit-type-card{flex:1 1 100%;min-width:unset}
+            .type-desc{display:none}
+            .rich-editor-toolbar{gap:1px;padding:4px 6px}
+            .rich-btn{width:26px;height:24px;font-size:11px}
+            .rich-btn.rich-btn-icon{font-size:13px}
+            .rich-select{font-size:10px;height:24px;max-width:56px}
+        }
+        @media(max-width:520px){
+            .container{padding:16px 10px}
+            .header h1{font-size:22px}
+            .panel{padding:14px 12px}
+            .tab-btn{font-size:12px;padding:10px 8px}
+            .detail-tab{padding:6px 12px;font-size:12px}
+        }
+        /* ===== Quick Date Buttons ===== */
+        .quick-date-btns{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+        .quick-date-btns .qd-btn{padding:3px 8px;font-size:11px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+        .quick-date-btns .qd-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+        .quick-date-btns .qd-btn.qd-clear{border-color:var(--danger);color:var(--danger)}
+        .quick-date-btns .qd-btn.qd-clear:hover{background:var(--danger);color:#fff}
+    </style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow glow1"></div>
+<div class="bg-glow glow2"></div>
+
+<!-- 全局返回按钮 - 固定在页面最左上角 -->
+<a href="dyn.html?page=pageManage" class="global-back-btn" title="返回空码管理">← 返回</a>
+
+<div class="container">
+    <div class="header">
+        <div class="header-left">
+            <div class="header-logo">Q</div>
+            <div>
+                <h1>空码<span>录入</span></h1>
+                <p style="font-size:13px;color:var(--muted);margin-top:4px">扫码识别 / 短码查询 / 快速编辑</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline btn-sm" onclick="refreshCurrentEntryTab()" style="display:inline-flex;align-items:center;gap:6px">🔄 刷新</button>
+            <a href="dyn.html?page=pageManage" class="btn btn-outline btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">← 返回管理</a>
+            <a href="dyn.html" class="btn btn-sm" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px">📋 管理中心</a>
+        </div>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('scan')">📷 扫码编辑</button>
+        <button class="tab-btn" onclick="switchTab('search')">🔍 短码查询</button>
+    </div>
+
+    <!-- ==================== TAB 1: SCAN ==================== -->
+    <div class="tab-content active" id="tab-scan">
+        <div class="panel">
+            <div class="panel-title">📷 扫一扫或上传空码 <span class="sub">— 已绑定显示内容，未绑定进入编辑</span><button class="btn btn-sm btn-outline" onclick="refreshScanTab()" style="margin-left:auto;border-color:var(--border);color:var(--accent);background:transparent;display:inline-flex;align-items:center;gap:6px">🔄 重置</button></div>
+            <div class="scan-area">
+                <div class="scan-col">
+                    <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">📸 摄像头扫描</div>
+                    <div class="scan-video-wrap" id="videoWrap">
+                        <video id="scanVideo" autoplay playsinline muted></video>
+                        <canvas id="scanCanvas"></canvas>
+                        <div class="scan-overlay"><div class="scan-frame"></div></div>
+                    </div>
+                    <div class="scan-status" id="scanStatus">点击下方按钮启动摄像头</div>
+                    <div class="scan-buttons">
+                        <button class="btn btn-sm" id="btnStartCam" onclick="startCamera()">🎥 启动摄像头</button>
+                        <button class="btn btn-sm btn-outline" id="btnStopCam" onclick="stopCamera()" style="display:none">⏹ 停止</button>
+                    </div>
+                </div>
+                <div class="scan-col">
+                    <div style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:10px">🖼 上传二维码图片</div>
+                    <label class="upload-area" id="uploadArea" for="qrFileInput">
+                        <div class="icon">📤</div>
+                        <div class="text">点击或拖拽上传二维码图片</div>
+                        <div class="hint">支持 PNG / JPG / WEBP</div>
+                        <img class="upload-preview" id="uploadPreview">
+                    </label>
+                    <input type="file" id="qrFileInput" accept="image/*" style="display:none" onchange="handleFileUpload(event)">
+                </div>
+            </div>
+            <div id="scanResult"></div>
+        </div>
+    </div>
+
+    <!-- ==================== TAB 2: SEARCH ==================== -->
+    <div class="tab-content" id="tab-search">
+        <div class="panel">
+            <div class="panel-title">🔍 短码查询 <span class="sub">— 输入短码快速定位并修改</span><button class="btn btn-sm btn-outline" onclick="resetSearchTab()" style="margin-left:auto;border-color:var(--border);color:var(--accent);background:transparent;display:inline-flex;align-items:center;gap:6px">🔄 清空</button></div>
+            <div class="search-wrap">
+                <input class="search-input" id="searchInput" placeholder="输入空码短码，例如：aB3xK9" onkeydown="if(event.key==='Enter')searchCode()">
+                <button class="btn" id="btnSearch" onclick="searchCode()">🔍 查询</button>
+            </div>
+            <div class="search-hint">💡 短码是空码的唯一标识，可在空码管理页面的卡片上找到</div>
+            <div id="searchResult"></div>
+        </div>
+    </div>
+
+    <!-- ==================== CONTENT DISPLAY (for bound codes) ==================== -->
+    <div class="content-display" id="contentDisplay">
+        <div class="panel">
+            <div class="code-info-bar" id="displayInfoBar"></div>
+            <div class="detail-section-title" style="margin-bottom:10px">📱 扫码显示内容</div>
+            <div class="content-frame" id="displayFrame"></div>
+            <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn btn-sm" onclick="enterEditFromDisplay()">✏ 编辑此空码</button>
+                <a class="btn btn-sm btn-outline" id="displayPreviewLink" target="_blank" style="text-decoration:none">🔗 查看效果</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== EDIT SECTION (for unbound codes or after clicking edit) ==================== -->
+    <div class="edit-section" id="editSection">
+        <!-- Code info bar -->
+        <div class="code-info-bar" id="editInfoBar"></div>
+
+        <!-- Edit sub-tabs -->
+        <div class="detail-tabs" id="editTabs">
+            <button class="detail-tab active" data-subtab="preview" onclick="switchEditTab('preview')">👁 预览内容</button>
+            <button class="detail-tab" data-subtab="edit" onclick="switchEditTab('edit')">✏ 编辑内容</button>
+            <button class="detail-tab" data-subtab="settings" onclick="switchEditTab('settings')">⚙ 设置</button>
+        </div>
+
+        <!-- Preview sub-tab -->
+        <div class="detail-tab-content active" id="subTabPreview">
+            <div class="panel">
+                <div class="detail-qr-large" id="editPreviewQR"></div>
+                <div class="detail-preview" id="editPreviewArea" style="height:380px"><span style="color:var(--muted)">暂无跳转目标</span></div>
+            </div>
+        </div>
+
+        <!-- Edit sub-tab -->
+        <div class="detail-tab-content" id="subTabEdit">
+            <div class="panel">
+                <div class="detail-section-title">跳转类型</div>
+                <div class="edit-type-cards">
+                    <label class="edit-type-card active" data-etype="url">
+                        <input type="radio" name="entryEditType" value="url" checked onchange="setEntryEditMode('url')">
+                        <span class="type-icon">🌐</span>
+                        <span class="type-name">网页链接</span>
+                        <span class="type-desc">扫码后跳转到指定网址</span>
+                    </label>
+                    <label class="edit-type-card" data-etype="text">
+                        <input type="radio" name="entryEditType" value="text" onchange="setEntryEditMode('text')">
+                        <span class="type-icon">📝</span>
+                        <span class="type-name">文本内容</span>
+                        <span class="type-desc">扫码后显示文字（支持富文本）</span>
+                    </label>
+                    <label class="edit-type-card" data-etype="image">
+                        <input type="radio" name="entryEditType" value="image" onchange="setEntryEditMode('image')">
+                        <span class="type-icon">🖼</span>
+                        <span class="type-name">图片链接</span>
+                        <span class="type-desc">上传图片或填写图片地址</span>
+                    </label>
+                    <label class="edit-type-card" data-etype="markdown">
+                        <input type="radio" name="entryEditType" value="markdown" onchange="setEntryEditMode('markdown')">
+                        <span class="type-icon">📑</span>
+                        <span class="type-name">Markdown</span>
+                        <span class="type-desc">Markdown语法 + 实时预览</span>
+                    </label>
+                </div>
+
+                <!-- URL mode -->
+                <div id="entryUrlPanel" class="edit-mode-panel">
+                    <div class="form-group"><label>文本 / 网址 / 内容</label><textarea class="form-input" id="entryUrlInput" rows="4" placeholder="输入文字、网址、WiFi 信息等…" style="min-height:100px" onblur="autoDetectEntryType()" onpaste="setTimeout(autoDetectEntryType,10)"></textarea></div>
+                </div>
+
+                <!-- Text mode -->
+                <div id="entryTextPanel" class="edit-mode-panel" style="display:none">
+                    <div class="rich-editor-toolbar" id="entryTextToolbar">
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="execEntryRichCmd('undo')" title="撤销">↩</button>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="execEntryRichCmd('redo')" title="重做">↪</button>
+                        <span class="rich-sep"></span>
+                        <select class="rich-select" onchange="execEntryRichCmd('formatBlock','<'+this.value+'>');this.value=''" title="段落格式">
+                            <option value="">正文</option><option value="h1">H1</option><option value="h2">H2</option><option value="h3">H3</option><option value="pre">代码</option><option value="blockquote">引用</option>
+                        </select>
+                        <span class="rich-sep"></span>
+                        <button type="button" class="rich-btn rich-btn-bold" onclick="execEntryRichCmd('bold')" title="粗体">B</button>
+                        <button type="button" class="rich-btn rich-btn-italic" onclick="execEntryRichCmd('italic')" title="斜体">I</button>
+                        <button type="button" class="rich-btn" onclick="execEntryRichCmd('underline')" title="下划线"><u>U</u></button>
+                        <button type="button" class="rich-btn" onclick="execEntryRichCmd('strikeThrough')" title="删除线"><s>S</s></button>
+                        <span class="rich-sep"></span>
+                        <button type="button" class="rich-btn rich-btn-color rich-btn-color-text" id="entryTextColorBtn" title="文字颜色">
+                            <span style="font-size:16px;line-height:1">A</span>
+                            <input type="color" id="entryTextColorInput" value="#ffffff" onchange="execEntryRichCmd('foreColor',this.value);document.getElementById('entryTextColorBtn').style.setProperty('--color-preview',this.value)">
+                        </button>
+                        <button type="button" class="rich-btn rich-btn-color rich-btn-color-bg" id="entryBgColorBtn" title="背景颜色">
+                            <span style="font-size:13px">🖌</span>
+                            <input type="color" id="entryBgColorInput" value="#ffff00" onchange="execEntryRichCmd('hiliteColor',this.value);document.getElementById('entryBgColorBtn').style.setProperty('--color-preview-bg',this.value)">
+                        </button>
+                        <span class="rich-sep"></span>
+                        <select class="rich-select" onchange="execEntryRichCmd('fontSize',this.value);this.value=''" title="字号">
+                            <option value="">大小</option><option value="1">12px</option><option value="2">14px</option><option value="3">16px</option><option value="4">18px</option><option value="5">24px</option><option value="6">32px</option><option value="7">48px</option>
+                        </select>
+                        <span class="rich-sep"></span>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="execEntryRichCmd('justifyLeft')" title="左对齐">⫷</button>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="execEntryRichCmd('justifyCenter')" title="居中">☰</button>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="execEntryRichCmd('justifyRight')" title="右对齐">⫸</button>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="execEntryRichCmd('justifyFull')" title="两端对齐">⊞</button>
+                        <span class="rich-sep"></span>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="execEntryRichCmd('insertUnorderedList')" title="无序列表">•≡</button>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="execEntryRichCmd('insertOrderedList')" title="有序列表">1.</button>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="execEntryRichCmd('indent')" title="增加缩进">→</button>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="execEntryRichCmd('outdent')" title="减少缩进">←</button>
+                        <span class="rich-sep"></span>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="execEntryRichCmd('removeFormat')" title="清除格式" style="color:#ff6b81">✕</button>
+                    </div>
+                    <div class="rich-editor" id="entryTextEdit" contenteditable="true" placeholder="开始输入内容，支持标题、粗体、颜色、列表等格式..."></div>
+                </div>
+
+                <!-- Image mode -->
+                <div id="entryImagePanel" class="edit-mode-panel" style="display:none">
+                    <label class="image-upload-area" id="entryImageUploadArea" for="entryImageFile">
+                        <div class="upload-icon">📁</div>
+                        <div>点击或拖拽上传图片</div>
+                        <div style="font-size:12px;color:var(--muted)">支持 JPG、PNG、GIF，最大 5MB</div>
+                    </label>
+                    <input type="file" id="entryImageFile" accept="image/*" style="display:none" onchange="handleEntryImageUpload(this.files)">
+                    <div id="entryImagePreviewWrap" style="display:none;margin-top:12px">
+                        <img id="entryImagePreview" style="max-width:100%;max-height:300px;border-radius:10px;border:1px solid var(--border)">
+                        <div style="margin-top:8px;display:flex;gap:8px">
+                            <button class="btn btn-sm btn-outline" onclick="document.getElementById('entryImageFile').click()" style="font-size:12px">🔄 更换</button>
+                            <button class="btn btn-sm btn-outline" onclick="clearEntryImage()" style="border-color:rgba(255,71,87,0.3);color:var(--danger);font-size:12px">✕ 移除</button>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top:12px"><label>或输入图片地址</label><input type="url" class="form-input" id="entryImageUrl" placeholder="https://example.com/image.png" oninput="previewEntryImageUrl(this.value)"></div>
+                </div>
+
+                <!-- Markdown mode -->
+                <div id="entryMarkdownPanel" class="edit-mode-panel" style="display:none">
+                    <div class="rich-editor-toolbar" id="entryMdToolbar">
+                        <button type="button" class="rich-btn rich-btn-bold" onclick="mdEntryInsert('**','**','粗体文字')" title="粗体">B</button>
+                        <button type="button" class="rich-btn rich-btn-italic" onclick="mdEntryInsert('*','*','斜体文字')" title="斜体">I</button>
+                        <button type="button" class="rich-btn" onclick="mdEntryInsert('~~','~~','删除线')" title="删除线"><s>S</s></button>
+                        <span class="rich-sep"></span>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="mdEntryInsert('# ','','H1')" title="一级标题">H1</button>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="mdEntryInsert('## ','','H2')" title="二级标题">H2</button>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="mdEntryInsert('### ','','H3')" title="三级标题">H3</button>
+                        <span class="rich-sep"></span>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="mdEntryInsert('[','](url)','链接')" title="链接">🔗</button>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="mdEntryInsert('![](',')','图片URL')" title="图片">🖼</button>
+                        <span class="rich-sep"></span>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="mdEntryInsert('`','`','代码')" title="行内代码">&lt;/&gt;</button>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="mdEntryInsert('```\n','\n```','代码块')" title="代码块">⊞</button>
+                        <span class="rich-sep"></span>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="mdEntryInsert('- ','','列表项')" title="无序列表">•≡</button>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="mdEntryInsert('1. ','','列表项')" title="有序列表">1.</button>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="mdEntryInsert('> ','','引用')" title="引用">❝</button>
+                        <span class="rich-sep"></span>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="mdEntryInsert('\n---\n','','')" title="分割线">—</button>
+                        <button type="button" class="rich-btn rich-btn-icon" onclick="mdEntryInsert('\n| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n| ',' | ',' |\n','')" title="表格">⊞T</button>
+                    </div>
+                    <div class="md-editor-wrap">
+                        <div class="md-editor-pane-left">
+                            <textarea class="md-editor-textarea" id="entryMdTextarea" placeholder="在此输入 Markdown 内容..." oninput="mdEntryUpdatePreview()"></textarea>
+                        </div>
+                        <div class="md-editor-pane-right" id="entryMdPreview">
+                            <span class="md-editor-empty">开始输入 Markdown，此处显示实时预览</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-full" id="btnSaveEdit" style="margin-top:16px;font-size:15px;padding:14px">💾 保存修改</button>
+                <div id="editMsg" style="margin-top:10px;font-size:13px"></div>
+            </div>
+        </div>
+
+        <!-- Settings sub-tab -->
+        <div class="detail-tab-content" id="subTabSettings">
+            <div class="panel">
+                <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+                    <!-- Left: Settings -->
+                    <div style="flex:1;min-width:320px">
+                        <!-- Logo -->
+                        <div class="panel" style="margin-bottom:16px">
+                            <div class="detail-section-title">🎨 Logo设置</div>
+                            <div class="form-hint" style="margin-bottom:12px">在二维码中央嵌入Logo图片</div>
+                            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                                <label class="btn btn-sm btn-outline" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+                                    📁 选择Logo
+                                    <input type="file" id="entrySettingLogo" accept="image/*" style="display:none" onchange="handleEntrySettingLogo(this.files[0])">
+                                </label>
+                                <button class="btn btn-sm btn-outline" onclick="clearEntrySettingLogo()" id="btnClearEntryLogo" style="border-color:rgba(255,71,87,0.3);color:var(--danger);display:none">✕ 清除Logo</button>
+                            </div>
+                            <div class="form-group" style="margin-top:12px">
+                                <label>Logo 尺寸占比</label>
+                                <div class="slider-wrap"><input type="range" id="entrySettingLogoSize" min="10" max="30" step="1" value="20" oninput="document.getElementById('entrySettingLogoSizeVal').textContent=this.value+'%';updateEntrySettingsPreview()"><span class="slider-val" id="entrySettingLogoSizeVal">20%</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Style -->
+                        <div class="panel" style="margin-bottom:16px">
+                            <div class="detail-section-title">🎨 样式</div>
+                            <div class="form-group">
+                                <label>纠错等级（嵌入Logo建议选 Q 或 H）</label>
+                                <select class="form-select" id="entrySettingEC" onchange="updateEntrySettingsPreview()"><option value="L">L — 低</option><option value="M">M — 中</option><option value="Q" selected>Q — 较高（推荐）</option><option value="H">H — 最高</option></select>
+                            </div>
+                            <div class="color-row">
+                                <div class="form-group"><label>前景色</label><div class="color-picker-wrap"><input type="color" id="entrySettingFg" value="#000000" oninput="document.getElementById('entrySettingFgHex').textContent=this.value;updateEntrySettingsPreview()"><span class="color-hex" id="entrySettingFgHex">#000000</span></div></div>
+                                <div class="form-group"><label>背景色</label><div class="color-picker-wrap"><input type="color" id="entrySettingBg" value="#ffffff" oninput="document.getElementById('entrySettingBgHex').textContent=this.value;updateEntrySettingsPreview()"><span class="color-hex" id="entrySettingBgHex">#ffffff</span></div></div>
+                            </div>
+                            <div class="form-group">
+                                <label>输出尺寸</label>
+                                <div class="slider-wrap"><input type="range" id="entrySettingOutputSize" min="200" max="800" step="50" value="400" oninput="document.getElementById('entrySettingOutputSizeVal').textContent=this.value+'×'+this.value;updateEntrySettingsPreview()"><span class="slider-val" id="entrySettingOutputSizeVal">400×400</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Label -->
+                        <div class="panel" style="margin-bottom:16px">
+                            <div class="detail-section-title">📝 备注</div>
+                            <div class="form-hint" style="margin-bottom:8px">管理界面卡片上显示的名称</div>
+                            <input type="text" class="form-input" id="entrySettingLabel" placeholder="例如：产品手册">
+                        </div>
+
+                        <!-- Tag -->
+                        <div class="panel" style="margin-bottom:16px">
+                            <div class="detail-section-title">🏷 标签</div>
+                            <div class="form-hint" style="margin-bottom:8px">下载二维码时印在下方的文字</div>
+                            <div class="form-group"><label>标签文字</label><input type="text" class="form-input" id="entrySettingTag" placeholder="例如：扫码查看" oninput="updateEntrySettingsPreview()"></div>
+                        <div class="form-row" style="align-items:end">
+                            <div class="form-group" style="flex:0 0 130px"><label>标签字号</label><input type="range" class="form-input" id="entrySettingTagSize" min="8" max="36" value="14" oninput="document.getElementById('entryTagSizeVal').textContent=this.value+'px';updateEntrySettingsPreview()" style="padding:0;height:24px"></div>
+                            <div class="form-group" style="flex:unset"><span id="entryTagSizeVal" style="font-size:14px;color:var(--accent)">14px</span></div>
+                        </div>
+                        <div class="form-group" style="margin-top:10px">
+                            <label>底部标签显示 <span style="font-size:10px;color:var(--muted)">（下载时生效）</span></label>
+                            <select class="form-select" id="entrySettingLabelMode">
+                                <option value="auto">自动（标签 > 备注 > 短码）</option>
+                                <option value="tag">标签（qr_tag）</option>
+                                <option value="label">备注（label）</option>
+                                <option value="code">短码（code）</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Status -->
+                        <div class="panel" style="margin-bottom:16px">
+                            <div class="detail-section-title">⚡ 状态</div>
+                            <div class="form-group">
+                                <select class="form-select" id="entrySettingStatus"><option value="1">✓ 启用</option><option value="0">✗ 停用</option></select>
+                            </div>
+                        </div>
+
+                        <!-- Limits -->
+                        <div class="panel" style="margin-bottom:16px">
+                            <div class="detail-section-title">⏱ 限制</div>
+                            <div class="form-row">
+                                <div class="form-group"><label>有效期至</label><input type="datetime-local" class="form-input" id="entrySettingExpiry"><div class="quick-date-btns"><button type="button" class="qd-btn" onclick="setQuickDate('entrySettingExpiry',1)">📅 +1天</button><button type="button" class="qd-btn" onclick="setQuickDate('entrySettingExpiry',3)">+3天</button><button type="button" class="qd-btn" onclick="setQuickDate('entrySettingExpiry',7)">+7天</button><button type="button" class="qd-btn" onclick="setQuickDate('entrySettingExpiry',30)">+1月</button><button type="button" class="qd-btn qd-clear" onclick="document.getElementById('entrySettingExpiry').value=''">✕ 清除</button></div></div>
+                                <div class="form-group"><label>扫码次数限制</label><input type="number" class="form-input" id="entrySettingMaxScans" placeholder="不限"><div class="form-hint">留空=不限</div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Live Preview -->
+                    <div style="flex:0 0 280px;position:sticky;top:20px">
+                        <div class="panel" style="margin-bottom:16px">
+                            <div class="detail-section-title">👁 实时预览</div>
+                            <div style="display:flex;justify-content:center;margin-bottom:12px">
+                                <canvas id="entrySettingsLiveQR" width="1000" height="1000" style="width:200px;height:200px;border-radius:4px;background:#fff;border:1px solid var(--border)"></canvas>
+                            </div>
+                            <div style="font-size:12px;color:var(--muted);margin-bottom:10px">修改左侧设置实时更新</div>
+                            <div style="margin-bottom:8px">
+                                <span style="font-size:11px;color:var(--muted)">标签预览：</span>
+                                <div id="entrySettingsTagPreview" style="font-size:14px;color:var(--text);margin-top:2px;padding:4px 8px;background:rgba(255,255,255,0.05);border-radius:4px;min-height:24px">-</div>
+                            </div>
+                            <div style="margin-bottom:8px">
+                                <span style="font-size:11px;color:var(--muted)">Logo预览：</span>
+                                <div id="entrySettingsLogoPreview" style="width:40px;height:40px;border-radius:6px;border:1px dashed var(--border);background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;margin-top:2px">
+                                    <span style="font-size:10px;color:var(--muted)">无</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-full" id="btnSaveSettings" style="margin-top:16px;font-size:15px;padding:14px">💾 保存设置</button>
+                <div id="settingsMsg" style="margin-top:10px;font-size:13px"></div>
+
+                <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+                    <button class="btn btn-danger btn-sm" id="btnDeleteCode" onclick="deleteCurrentCode()">🗑 删除此空码</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p style="color:var(--muted);font-size:12px;margin-bottom:8px">ToolForge · 空码录入 &mdash; <a href="https://www.1772584873.icu/">www.1772584873.icu</a></p>
+        <a href="https://www.landui.com?refer_host=lanMjY4MDk2dWk=" target="_blank"><img src="https://www.landui.com/hosting/free_host_img" style="margin-top:8px;max-width:100%;border-radius:6px;opacity:.88">蓝队云提供免费虚拟主机</a><br>
+        <a href="https://www.landui.com/eve/a1111p?pacode=CkF3C" target="_blank" style="display:inline-block;margin-top:8px;padding:7px 18px;background:linear-gradient(135deg,#00d4ff,#0090ff);color:#fff;font-size:12px;font-weight:600;border-radius:8px;text-decoration:none">🚀 蓝队云永久免费虚拟主机 · 点击领取 &rarr;</a>
+        <br><span onclick="showContactUs()" style="cursor:pointer;color:var(--accent);font-size:11px;margin-top:6px;display:inline-block;transition:color .2s" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--accent)'">📬 联系我们</span>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== GLOBALS =====
+var currentTab = 'scan';
+var scanStream = null;
+var scanInterval = null;
+var scanFailCount = 0;
+var foundCode = null;
+var entryEditType = 'url';
+var entryImageData = null;
+var entryLogoData = null;
+var entryLogoImg = null;
+var activeRichEditor = null;
+var isEditView = false;
+const CJK_FONT = "'PingFang SC','Microsoft YaHei',sans-serif";
+
+function toDateTimeLocal(dt) {
+    if (!dt) return '';
+    return dt.substring(0,10) + 'T' + dt.substring(11,16);
+}
+function setQuickDate(inputId, days) {
+    var d = new Date();
+    d.setDate(d.getDate() + days);
+    var yyyy = d.getFullYear();
+    var mm = ('0' + (d.getMonth()+1)).slice(-2);
+    var dd = ('0' + d.getDate()).slice(-2);
+    var hh = ('0' + d.getHours()).slice(-2);
+    var mi = ('0' + d.getMinutes()).slice(-2);
+    document.getElementById(inputId).value = yyyy + '-' + mm + '-' + dd + 'T' + hh + ':' + mi;
+}
+
+// ===== TAB SWITCHING =====
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+    document.getElementById('tab-' + tab).classList.add('active');
+    var btns = document.querySelectorAll('.tab-btn');
+    if (tab === 'scan') btns[0].classList.add('active');
+    else if (tab === 'search') btns[1].classList.add('active');
+    if (tab !== 'scan') stopCamera();
+}
+
+// ===== TOAST =====
+var toastTimer;
+function showToast(msg, type) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show ' + (type || 'success');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() { t.classList.remove('show'); }, 3000);
+}
+
+function showContactUs() {
+    var rand = Math.random().toString(36).substring(2, 10);
+    var email = rand + '@xfmmda.cc.cd';
+    var o = document.createElement('div');
+    o.className = 'modal-overlay visible';
+    o.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999';
+    o.innerHTML = '<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px 24px;max-width:400px;width:90%;backdrop-filter:blur(10px)"><div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:8px;text-align:center">📬 联系我们</div><div style="font-size:13px;color:var(--muted);margin-bottom:16px;text-align:center">如有任何问题或建议，欢迎联系我们</div><div style="background:rgba(0,212,255,0.08);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;text-align:center"><div style="font-size:12px;color:var(--muted);margin-bottom:6px">📧 管理员邮箱</div><div style="font-size:16px;color:var(--accent);font-weight:700;word-break:break-all">' + email + '</div><button class="btn btn-sm btn-outline" style="margin-top:8px;width:100%" id="contactCopyBtnEntry" onclick="var b=this;navigator.clipboard.writeText(\'' + email + '\').then(function(){b.textContent=\'已复制！\';setTimeout(function(){b.textContent=\'复制邮箱\'},2000)})">复制邮箱</button></div><div style="text-align:center"><a href="mailto:' + email + '" class="btn btn-outline" style="display:inline-block;padding:8px 24px;text-decoration:none">✉️ 发送邮件</a></div><button class="btn btn-full" onclick="this.closest(\'div[class*=\'modal-overlay\']\')||this.parentElement.remove();this.closest(\'div\').parentElement.remove();" style="margin-top:12px;background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.15)">关闭</button></div>';
+    o.addEventListener('click', function(e) { if (e.target === o) o.remove(); });
+    document.body.appendChild(o);
+}
+
+// ================================================================
+//  SCAN & SEARCH
+// ================================================================
+
+function startCamera() {
+    var video = document.getElementById('scanVideo');
+    var btnStart = document.getElementById('btnStartCam');
+    var btnStop = document.getElementById('btnStopCam');
+    var status = document.getElementById('scanStatus');
+
+    // Check jsQR loaded
+    if (typeof jsQR === 'undefined') {
+        status.innerHTML = '<span class="error">❌ 扫码库未加载，请刷新页面重试<br><small>或使用下方「上传图片」方式</small></span>';
+        return;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        status.innerHTML = '<span class="error">⚠ 您的浏览器不支持摄像头</span>';
+        return;
+    }
+
+    btnStart.style.display = 'none'; btnStop.style.display = '';
+    status.textContent = '📡 正在启动摄像头…';
+    scanFailCount = 0;
+
+    navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }
+    })
+    .then(function(stream) {
+        scanStream = stream;
+        video.srcObject = stream;
+        video.setAttribute('playsinline', '');
+        video.setAttribute('muted', '');
+        video.play().then(function() {
+            status.textContent = '🔍 正在扫描… 请将二维码对准框内';
+            startScanLoop();
+        }).catch(function(e) {
+            status.innerHTML = '<span class="error">⚠ 摄像头播放失败: ' + (e.message || '未知错误') + '</span>';
+            stopCamera();
+        });
+    })
+    .catch(function(err) {
+        status.innerHTML = '<span class="error">⚠ 无法访问摄像头<br><small>' + (err.message || '请检查权限设置') + '</small></span>';
+        btnStart.style.display = ''; btnStop.style.display = 'none';
+    });
+}
+
+function stopCamera() {
+    if (scanStream) {
+        scanStream.getTracks().forEach(function(t) { t.stop(); });
+        scanStream = null;
+    }
+    if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+    var video = document.getElementById('scanVideo');
+    if (video) video.srcObject = null;
+    document.getElementById('btnStartCam').style.display = '';
+    document.getElementById('btnStopCam').style.display = 'none';
+    document.getElementById('scanStatus').textContent = '点击下方按钮启动摄像头';
+}
+
+function startScanLoop() {
+    if (scanInterval) clearInterval(scanInterval);
+    var video = document.getElementById('scanVideo');
+    var canvas = document.getElementById('scanCanvas');
+    var ctx = canvas.getContext('2d');
+
+    scanInterval = setInterval(function() {
+        if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+        if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        try {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        } catch(e) { return; }
+
+        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var code = null;
+
+        // Try normal scan
+        try { code = jsQR(imageData.data, canvas.width, canvas.height); } catch(e) {}
+
+        // If not found, try with inversion
+        if (!code) {
+            try { code = jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'attemptBoth' }); } catch(e) {}
+        }
+
+        if (code && code.data) {
+            var shortCode = extractCode(code.data);
+            if (shortCode) {
+                stopCamera();
+                document.getElementById('scanStatus').textContent = '✅ 识别成功: ' + shortCode;
+                lookupAndShow(shortCode, 'scanResult');
+                return;
+            } else {
+                scanFailCount++;
+                document.getElementById('scanStatus').innerHTML = '🔍 检测到二维码但非空码格式… <small>(非空码或格式不匹配)</small>';
+                if (scanFailCount > 10) {
+                    document.getElementById('scanStatus').innerHTML = '<span class="error">⚠ 多次扫描失败，请确认二维码是空码<br><small>或使用「上传图片」方式</small></span>';
+                }
+            }
+        }
+    }, 250);
+}
+
+function extractCode(data) {
+    if (!data) return null;
+    // Try r.php?id=XXX format (most common)
+    var m = data.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (m) return m[1];
+    // Try raw short code format (4-12 chars alphanumeric)
+    m = data.match(/^([a-zA-Z0-9]{4,12})$/);
+    if (m) return m[1];
+    // Try path-based /CODE
+    m = data.match(/\/([a-zA-Z0-9_-]{4,20})(?:\?|$|#)/);
+    if (m) return m[1];
+    // Try full URL with r.php path
+    m = data.match(/r\.php\?id=([a-zA-Z0-9_-]+)/i);
+    if (m) return m[1];
+    return null;
+}
+
+function handleFileUpload(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+
+    if (typeof jsQR === 'undefined') {
+        showResultMsg('scanResult', 'error', '❌', '扫码库未加载', '请刷新页面后重试');
+        return;
+    }
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var preview = document.getElementById('uploadPreview');
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+
+        var img = new Image();
+        img.onload = function() {
+            var canvas = document.createElement('canvas');
+            var maxW = 1200;
+            var scale = Math.min(1, maxW / img.width, maxW / img.height);
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            var code = null;
+
+            // Try multiple scan modes
+            try { code = jsQR(imageData.data, canvas.width, canvas.height); } catch(e) {}
+            if (!code) {
+                try { code = jsQR(imageData.data, canvas.width, canvas.height, { inversionAttempts: 'attemptBoth' }); } catch(e) {}
+            }
+
+            if (code && code.data) {
+                var shortCode = extractCode(code.data);
+                if (shortCode) {
+                    lookupAndShow(shortCode, 'scanResult');
+                } else {
+                    showResultMsg('scanResult', 'error', '❌', '无法识别', '图片中二维码不是空码格式（识别的数据为: ' + escHtml(code.data.substring(0, 50)) + '…）');
+                }
+            } else {
+                showResultMsg('scanResult', 'error', '❌', '未检测到二维码', '请上传清晰、完整的二维码图片，确保二维码完整可见');
+            }
+        };
+        img.onerror = function() {
+            showResultMsg('scanResult', 'error', '❌', '图片加载失败', '无法读取上传的图片，请尝试其他格式');
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function searchCode() {
+    var code = document.getElementById('searchInput').value.trim();
+    if (!code) { showToast('请输入短码', 'error'); return; }
+    var btn = document.getElementById('btnSearch');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>查询中';
+    lookupAndShow(code, 'searchResult', function() {
+        btn.disabled = false;
+        btn.innerHTML = '🔍 查询';
+    });
+}
+
+function showResultMsg(containerId, type, icon, title, desc) {
+    var cls = type === 'success' ? 'success' : (type === 'warning' ? 'warning' : 'error');
+    document.getElementById(containerId).innerHTML =
+        '<div class="result-msg ' + cls + '">' +
+            '<div class="big-icon">' + icon + '</div>' +
+            '<div class="title">' + title + '</div>' +
+            '<div class="desc">' + desc + '</div>' +
+        '</div>';
+}
+
+// ================================================================
+//  LOOKUP & SHOW - Differentiates bound vs unbound
+// ================================================================
+
+function lookupAndShow(code, containerId, cb) {
+    var container = document.getElementById(containerId);
+    container.innerHTML = '<div class="result-msg info"><span class="spinner"></span> 正在查询空码 <b style="color:var(--accent);font-family:monospace">' + escHtml(code) + '</b>…</div>';
+
+    // Hide any previous display/edit sections
+    hideAllResults();
+
+    fetch('/api/lookup.php', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'code=' + encodeURIComponent(code)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+        if (cb) cb();
+        if (!res.success) {
+            var errType = res.code_type || 'error';
+            if (errType === 'unauthorized') {
+                showResultMsg(containerId, 'warning', '⛔', '越权访问',
+                    '此空码 <b style="color:var(--warning);font-family:monospace">' + escHtml(code) + '</b> 不属于您的账号，无法修改。<br>请确认您登录的是正确的账号，或联系管理员处理。');
+            } else if (errType === 'not_found') {
+                showResultMsg(containerId, 'error', '🔍', '短码不存在',
+                    '未找到空码 <b style="color:var(--danger);font-family:monospace">' + escHtml(code) + '</b>，请检查短码是否正确。');
+            } else {
+                showResultMsg(containerId, 'error', '❌', '查询失败', escHtml(res.error || '未知错误'));
+            }
+            return;
+        }
+
+        // Clear result area
+        container.innerHTML = '';
+        foundCode = res.data;
+
+        // Determine bound vs unbound
+        var hasContent = foundCode.target_url && foundCode.target_url.trim() !== '';
+
+        if (hasContent) {
+            // BOUND: show content display (like r.php)
+            showContentDisplay(foundCode);
+        } else {
+            // UNBOUND: enter edit mode directly
+            isEditView = true;
+            populateEditSection(foundCode);
+            showEditSection();
+        }
+    })
+    .catch(function(err) {
+        if (cb) cb();
+        showResultMsg(containerId, 'error', '🔌', '网络错误', '无法连接到服务器，请检查网络后重试');
+    });
+}
+
+function hideAllResults() {
+    document.getElementById('contentDisplay').classList.remove('show');
+    document.getElementById('editSection').classList.remove('show');
+    isEditView = false;
+}
+
+// ================================================================
+//  CONTENT DISPLAY (for bound codes)
+// ================================================================
+
+function showContentDisplay(data) {
+    isEditView = false;
+    var display = document.getElementById('contentDisplay');
+    display.classList.add('show');
+    // Just hide edit section visually, don't null foundCode
+    document.getElementById('editSection').classList.remove('show');
+
+    // Info bar
+    var expired = data.expired;
+    var maxedOut = data.maxed_out;
+    var badgesHtml = '';
+    if (expired) badgesHtml += '<span class="expired-badge">⏰ 已过期</span> ';
+    if (maxedOut) badgesHtml += '<span class="maxed-badge">🚫 扫码达上限</span> ';
+    badgesHtml += '<span class="unbound-badge">✓ 已绑定</span>';
+
+    document.getElementById('displayInfoBar').innerHTML =
+        '<span>短码</span>' +
+        '<span class="code-badge">' + escHtml(data.code) + '</span>' +
+        '<span class="stat">扫码 <b>' + data.scan_count + '</b> 次</span>' +
+        badgesHtml;
+
+    document.getElementById('displayPreviewLink').href = data.redirect_url;
+
+    // Render content (with URL decode support for DB-stored encoded content)
+    var content = data.target_url || '';
+    var frame = document.getElementById('displayFrame');
+
+    if (content.substring(0, 5) === 'text:') {
+        var txt = content.substring(5);
+        try { var d = decodeURIComponent(txt); if (d !== txt) txt = d; } catch(e) {}
+        frame.innerHTML = '<div class="raw-content" style="white-space:pre-wrap">' + txt + '</div>';
+    } else if (content.substring(0, 9) === 'markdown:') {
+        var md = content.substring(9);
+        try { var d1 = decodeURIComponent(md); if (d1 !== md) md = d1; } catch(e) {}
+        frame.innerHTML = '<div class="raw-content">' + marked.parse(md) + '</div>';
+    } else if (content.substring(0, 5) === 'data:' || content.match(/^https?:\/\/.+\.(png|jpg|jpeg|gif|webp|svg)/i)) {
+        frame.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:300px">' +
+            '<img src="' + escAttr(content) + '" style="max-width:100%;max-height:500px;border-radius:8px" alt="">' +
+            '</div>';
+    } else {
+        // URL - show iframe
+        frame.innerHTML = '<iframe src="' + escAttr(content) + '" style="width:100%;height:500px;border:none" sandbox="allow-scripts allow-same-origin"></iframe>';
+    }
+
+    // Scroll to display
+    display.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function enterEditFromDisplay() {
+    if (!foundCode) return;
+    isEditView = true;
+    document.getElementById('contentDisplay').classList.remove('show');
+    populateEditSection(foundCode);
+    showEditSection();
+}
+
+// ================================================================
+//  EDIT SECTION TOGGLE
+// ================================================================
+
+function showEditSection() {
+    document.getElementById('editSection').classList.add('show');
+    document.getElementById('editSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function hideEditSection() {
+    document.getElementById('editSection').classList.remove('show');
+    foundCode = null;
+}
+
+// ================================================================
+//  POPULATE EDIT SECTION
+// ================================================================
+
+function populateEditSection(data) {
+    // --- Info bar ---
+    var expired = data.expired;
+    var maxedOut = data.maxed_out;
+    var hasContent = data.target_url && data.target_url.trim() !== '';
+    var badgesHtml = '';
+    if (expired) badgesHtml += '<span class="expired-badge">⏰ 已过期</span> ';
+    if (maxedOut) badgesHtml += '<span class="maxed-badge">🚫 扫码达上限</span> ';
+    if (!hasContent) badgesHtml += '<span class="unbound-badge">未绑定</span> ';
+
+    document.getElementById('editInfoBar').innerHTML =
+        '<span>短码</span>' +
+        '<span class="code-badge">' + escHtml(data.code) + '</span>' +
+        '<span class="stat">扫码 <b>' + data.scan_count + '</b> 次</span>' +
+        '<span class="stat">创建于 <b>' + escHtml(data.created_at || '-') + '</b></span>' +
+        badgesHtml +
+        '<span style="flex:1"></span>' +
+        '<a href="' + escHtml(data.redirect_url) + '" target="_blank" style="color:var(--accent);font-size:12px;text-decoration:none">🔗 预览</a>';
+
+    // --- Determine content type ---
+    var raw = data.target_url || '';
+    var detectedType = 'url';
+    if (raw.substring(0, 5) === 'text:') { detectedType = 'text'; }
+    else if (raw.substring(0, 6) === 'data:image') { detectedType = 'image'; }
+    else if (raw.substring(0, 9) === 'markdown:') { detectedType = 'markdown'; }
+    else if (raw.match(/^https?:\/\/.+\.(png|jpg|jpeg|gif|webp|svg)/i)) { detectedType = 'image'; }
+
+    setEntryEditMode(detectedType, true);
+
+    // Populate content based on type (with URL decode support)
+    if (detectedType === 'text') {
+        var txt = raw.substring(5);
+        try { var d = decodeURIComponent(txt); if (d !== txt) txt = d; } catch(e) {}
+        document.getElementById('entryTextEdit').innerHTML = txt;
+    } else if (detectedType === 'image') {
+        if (raw.substring(0, 4) === 'http') {
+            document.getElementById('entryImageUrl').value = raw;
+            previewEntryImageUrl(raw);
+        } else if (raw.substring(0, 5) === 'data:') {
+            document.getElementById('entryImagePreview').src = raw;
+            document.getElementById('entryImagePreviewWrap').style.display = '';
+            entryImageData = raw;
+        }
+    } else if (detectedType === 'markdown') {
+        var md = raw.substring(9);
+        try { var d1 = decodeURIComponent(md); if (d1 !== md) md = d1; } catch(e) {}
+        document.getElementById('entryMdTextarea').value = md;
+        mdEntryUpdatePreview();
+    } else {
+        document.getElementById('entryUrlInput').value = raw;
+    }
+
+    // --- Settings ---
+    document.getElementById('entrySettingLabel').value = data.label || '';
+    document.getElementById('entrySettingTag').value = data.qr_tag || '';
+    document.getElementById('entrySettingTagSize').value = data.qr_tag_font_size || 14;
+    document.getElementById('entryTagSizeVal').textContent = (data.qr_tag_font_size || 14) + 'px';
+    document.getElementById('entrySettingStatus').value = data.status || 1;
+    document.getElementById('entrySettingExpiry').value = toDateTimeLocal(data.expires_at);
+    document.getElementById('entrySettingMaxScans').value = data.max_scans || '';
+
+    // Load settings defaults
+    entryLogoData = data.qr_logo || null;
+    entryLogoImg = null;
+    document.getElementById('btnClearEntryLogo').style.display = 'none';
+    document.getElementById('entrySettingsLogoPreview').innerHTML = '<span style="font-size:10px;color:var(--muted)">无</span>';
+    if (entryLogoData) {
+        entryLogoImg = new Image();
+        entryLogoImg.onload = function() {
+            document.getElementById('entrySettingsLogoPreview').innerHTML = '<img src="' + entryLogoData + '" style="width:100%;height:100%;object-fit:contain;border-radius:4px">';
+            document.getElementById('btnClearEntryLogo').style.display = '';
+            updateEntrySettingsPreview();
+        };
+        entryLogoImg.src = entryLogoData;
+    }
+
+    // Reset settings to defaults
+    document.getElementById('entrySettingEC').value = 'Q';
+    document.getElementById('entrySettingFg').value = '#000000';
+    document.getElementById('entrySettingFgHex').textContent = '#000000';
+    document.getElementById('entrySettingBg').value = '#ffffff';
+    document.getElementById('entrySettingBgHex').textContent = '#ffffff';
+    document.getElementById('entrySettingOutputSize').value = 400;
+    document.getElementById('entrySettingOutputSizeVal').textContent = '400×400';
+    document.getElementById('entrySettingLogoSize').value = 20;
+    document.getElementById('entrySettingLogoSizeVal').textContent = '20%';
+
+    // --- Preview tab ---
+    switchEditTab('preview');
+    updateEditPreview(data.redirect_url, data.target_url, detectedType);
+
+    // --- Clear messages ---
+    document.getElementById('editMsg').innerHTML = '';
+    document.getElementById('settingsMsg').innerHTML = '';
+}
+
+// ================================================================
+//  EDIT SUB-TABS
+// ================================================================
+
+function switchEditTab(tab) {
+    document.querySelectorAll('#editTabs .detail-tab').forEach(function(t) { t.classList.toggle('active', t.dataset.subtab === tab); });
+    document.querySelectorAll('#editSection .detail-tab-content').forEach(function(c) { c.classList.remove('active'); });
+    var targetId = 'subTab' + tab.charAt(0).toUpperCase() + tab.slice(1);
+    var target = document.getElementById(targetId);
+    if (target) target.classList.add('active');
+    if (tab === 'preview' && foundCode) {
+        updateEditPreview(foundCode.redirect_url, getCurrentTargetUrl(), entryEditType);
+    }
+    if (tab === 'settings') updateEntrySettingsPreview();
+}
+
+// ================================================================
+//  PREVIEW
+// ================================================================
+
+function updateEditPreview(qrUrl, content, contentType) {
+    var qrDiv = document.getElementById('editPreviewQR');
+    try {
+        var ec = document.getElementById('entrySettingEC').value || 'Q';
+        var fg = document.getElementById('entrySettingFg').value || '#000000';
+        var bg = document.getElementById('entrySettingBg').value || '#ffffff';
+        var qr = qrcode(0, ec);
+        qr.addData(qrUrl);
+        qr.make();
+        var modCount = qr.getModuleCount();
+        var canvas = document.createElement('canvas');
+        var displaySize = 280;
+        canvas.width = displaySize; canvas.height = displaySize;
+        var ctx = canvas.getContext('2d');
+        var cellSize = displaySize / modCount;
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, displaySize, displaySize);
+        for (var row = 0; row < modCount; row++) {
+            for (var col = 0; col < modCount; col++) {
+                if (qr.isDark(row, col)) {
+                    ctx.fillStyle = fg;
+                    ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
+                }
+            }
+        }
+        if (entryLogoImg && entryLogoImg.complete && entryLogoImg.naturalWidth > 0) {
+            var logoRatio = (parseInt(document.getElementById('entrySettingLogoSize').value) || 20) / 100;
+            var logoSize = displaySize * logoRatio;
+            var logoX = (displaySize - logoSize) / 2;
+            var logoY = (displaySize - logoSize) / 2;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(logoX - 2, logoY - 2, logoSize + 4, logoSize + 4);
+            ctx.drawImage(entryLogoImg, logoX, logoY, logoSize, logoSize);
+        }
+        qrDiv.innerHTML = '';
+        qrDiv.appendChild(canvas);
+    } catch(e) {
+        qrDiv.innerHTML = '<span style="color:var(--muted)">QR生成失败</span>';
+    }
+
+    var previewArea = document.getElementById('editPreviewArea');
+    if (!content) {
+        previewArea.innerHTML = '<span style="color:var(--muted)">暂无跳转目标</span>';
+        return;
+    }
+    if (contentType === 'url' && !content.match(/^(text:|markdown:|data:image)/)) {
+        previewArea.innerHTML = '<iframe src="' + escAttr(content) + '" style="width:100%;height:100%;border:none" sandbox="allow-scripts allow-same-origin"></iframe>';
+    } else if (contentType === 'text') {
+        var txt = content.substring(0, 5) === 'text:' ? content.substring(5) : content;
+        previewArea.innerHTML = '<div style="padding:20px;overflow:auto;width:100%;height:100%;font-size:15px;line-height:1.8">' + txt + '</div>';
+    } else if (contentType === 'image') {
+        previewArea.innerHTML = '<img src="' + escAttr(content) + '" style="max-width:100%;max-height:100%;object-fit:contain">';
+    } else if (contentType === 'markdown') {
+        var md = content.substring(0, 9) === 'markdown:' ? content.substring(9) : content;
+        previewArea.innerHTML = '<div style="padding:20px;overflow:auto;width:100%;height:100%;font-size:14px;line-height:1.7">' + marked.parse(md) + '</div>';
+    }
+}
+
+// ================================================================
+//  EDIT MODE SWITCHING
+// ================================================================
+
+function setEntryEditMode(type, skipReset) {
+    entryEditType = type;
+    document.querySelectorAll('#editSection .edit-type-card').forEach(function(c) { c.classList.toggle('active', c.dataset.etype === type); });
+
+    var panels = { url: 'entryUrlPanel', text: 'entryTextPanel', image: 'entryImagePanel', markdown: 'entryMarkdownPanel' };
+    Object.keys(panels).forEach(function(k) {
+        document.getElementById(panels[k]).style.display = k === type ? '' : 'none';
+    });
+
+    if (type === 'text') activeRichEditor = document.getElementById('entryTextEdit');
+}
+
+// 自动识别内容类型
+function autoDetectEntryType() {
+    var input = document.getElementById('entryUrlInput');
+    if (!input) return;
+    var v = (input.value || '').trim();
+    if (!v) return;
+    // 图片URL检测
+    if (/^data:image\//i.test(v)) { setEntryEditMode('image'); return; }
+    if (/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|#|$)/i.test(v)) { setEntryEditMode('image'); return; }
+    // 网址检测
+    if (/^https?:\/\//i.test(v)) { setEntryEditMode('url'); return; }
+    // 其他 → 文本
+    if (entryEditType !== 'text') setEntryEditMode('text');
+}
+
+function getCurrentTargetUrl() {
+    if (entryEditType === 'text') return 'text:' + (document.getElementById('entryTextEdit').innerHTML || '');
+    if (entryEditType === 'image') return document.getElementById('entryImageUrl').value.trim() || entryImageData || '';
+    if (entryEditType === 'markdown') return 'markdown:' + (document.getElementById('entryMdTextarea').value || '');
+    return document.getElementById('entryUrlInput').value.trim();
+}
+
+// ================================================================
+//  RICH TEXT COMMANDS
+// ================================================================
+
+function execEntryRichCmd(cmd, value) {
+    if (!activeRichEditor) activeRichEditor = document.getElementById('entryTextEdit');
+    if (activeRichEditor) {
+        activeRichEditor.focus();
+        document.execCommand(cmd, false, value || null);
+    }
+}
+
+document.addEventListener('focusin', function(e) {
+    if (e.target.closest && e.target.closest('#entryTextEdit')) activeRichEditor = document.getElementById('entryTextEdit');
+});
+
+// ================================================================
+//  IMAGE HANDLERS
+// ================================================================
+
+function handleEntryImageUpload(files) {
+    if (!files || !files[0]) return;
+    var file = files[0];
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('entryImagePreview').src = e.target.result;
+        document.getElementById('entryImagePreviewWrap').style.display = '';
+        entryImageData = e.target.result;
+        uploadEntryImage(e.target.result);
+    };
+    reader.readAsDataURL(file);
+}
+
+function uploadEntryImage(base64) {
+    fetch('/api/upload_image.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({data: base64})
+    })
+    .then(function(r) {
+        if (!r.ok) {
+            if (r.status === 413) throw new Error('图片文件过大（最大2MB），请压缩后重试');
+            return r.json().then(function(j) { throw new Error(j.error || 'HTTP ' + r.status); });
+        }
+        return r.json();
+    })
+    .then(function(res) {
+        if (res.success) {
+            document.getElementById('entryImageUrl').value = res.url;
+            entryImageData = res.url;
+            showToast('图片上传成功', 'success');
+        } else {
+            var errMsg = res.error || '未知错误';
+            if (errMsg.indexOf('large') >= 0 || errMsg.indexOf('2MB') >= 0) errMsg = '图片文件过大（最大2MB），请压缩后重试';
+            showToast('上传失败：' + errMsg, 'error');
+        }
+    })
+    .catch(function(e) {
+        var msg = e.message || '';
+        if (msg.indexOf('JSON') >= 0 || msg.indexOf('SyntaxError') >= 0 || msg.indexOf('Unexpected') >= 0) {
+            msg = '图片文件过大，请压缩后重试';
+        } else if (!msg || msg.indexOf('Failed') >= 0) {
+            msg = '上传失败，请检查网络后重试';
+        }
+        showToast(msg, 'error');
+    });
+}
+
+function clearEntryImage() {
+    document.getElementById('entryImagePreviewWrap').style.display = 'none';
+    document.getElementById('entryImagePreview').src = '';
+    document.getElementById('entryImageUrl').value = '';
+    document.getElementById('entryImageFile').value = '';
+    entryImageData = null;
+}
+
+function previewEntryImageUrl(url) {
+    if (url) {
+        document.getElementById('entryImagePreview').src = url;
+        document.getElementById('entryImagePreviewWrap').style.display = '';
+    }
+}
+
+// ================================================================
+//  MARKDOWN HELPERS
+// ================================================================
+
+function mdEntryUpdatePreview() {
+    var md = document.getElementById('entryMdTextarea').value;
+    var preview = document.getElementById('entryMdPreview');
+    if (md.trim()) {
+        preview.innerHTML = marked.parse(md);
+    } else {
+        preview.innerHTML = '<span class="md-editor-empty">开始输入 Markdown，此处显示实时预览</span>';
+    }
+}
+
+function mdEntryInsert(before, after, placeholder) {
+    var ta = document.getElementById('entryMdTextarea');
+    var start = ta.selectionStart, end = ta.selectionEnd;
+    var sel = ta.value.substring(start, end) || placeholder;
+    var text = before + sel + after;
+    ta.value = ta.value.substring(0, start) + text + ta.value.substring(end);
+    ta.focus();
+    ta.selectionStart = start + before.length;
+    ta.selectionEnd = start + before.length + sel.length;
+    mdEntryUpdatePreview();
+}
+
+// ================================================================
+//  SETTINGS LOGO
+// ================================================================
+
+function handleEntrySettingLogo(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        entryLogoData = e.target.result;
+        entryLogoImg = new Image();
+        entryLogoImg.onload = function() {
+            document.getElementById('entrySettingsLogoPreview').innerHTML = '<img src="' + entryLogoData + '" style="width:100%;height:100%;object-fit:contain;border-radius:4px">';
+            document.getElementById('btnClearEntryLogo').style.display = '';
+            updateEntrySettingsPreview();
+        };
+        entryLogoImg.src = entryLogoData;
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearEntrySettingLogo() {
+    entryLogoData = null;
+    entryLogoImg = null;
+    document.getElementById('entrySettingsLogoPreview').innerHTML = '<span style="font-size:10px;color:var(--muted)">无</span>';
+    document.getElementById('btnClearEntryLogo').style.display = 'none';
+    updateEntrySettingsPreview();
+}
+
+// ================================================================
+//  SETTINGS LIVE PREVIEW
+// ================================================================
+
+function updateEntrySettingsPreview() {
+    var canvas = document.getElementById('entrySettingsLiveQR');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+
+    var tag = document.getElementById('entrySettingTag').value.trim();
+    var fontSize = parseInt(document.getElementById('entrySettingTagSize').value) || 14;
+    var outputPx = parseInt((document.getElementById('entrySettingOutputSize') || {}).value) || 400;
+    var fg = (document.getElementById('entrySettingFg') || {}).value || '#000000';
+    var bg = (document.getElementById('entrySettingBg') || {}).value || '#ffffff';
+    var ec = (document.getElementById('entrySettingEC') || {}).value || 'L';
+    var logoRatio = parseInt((document.getElementById('entrySettingLogoSize') || {}).value) || 20;
+
+    var targetUrl = foundCode ? foundCode.redirect_url : 'https://www.1772584873.icu/';
+    if (!targetUrl) targetUrl = 'https://www.1772584873.icu/';
+
+    try {
+        // Generate QR and compute pixel size
+        var qrobj = qrcode(0, ec);
+        qrobj.addData(targetUrl);
+        qrobj.make();
+        var modCount = qrobj.getModuleCount();
+        var cellSize = Math.floor(outputPx / modCount);
+        if (cellSize < 1) cellSize = 1;
+        var qrPx = modCount * cellSize;
+
+        // Label height
+        var labelH = 0;
+        if (tag) {
+            var labelFs = Math.max(10, fontSize);
+            labelH = Math.round(labelFs * 2.2);
+        }
+        var pad = 40;
+        var canvasW = canvas.width, canvasH = canvas.height;
+        var totalH = qrPx + labelH;
+        if (totalH > canvasH - pad * 2) {
+            // Scale down to fit
+            var scale = (canvasH - pad * 2) / totalH;
+            cellSize = Math.floor(cellSize * scale);
+            if (cellSize < 1) cellSize = 1;
+            qrPx = modCount * cellSize;
+            labelH = Math.round(labelH * scale);
+            totalH = qrPx + labelH;
+        }
+        var offsetX = Math.floor((canvasW - qrPx) / 2);
+        var offsetY = Math.floor((canvasH - totalH) / 2);
+
+        // Clear
+        ctx.clearRect(0, 0, canvasW, canvasH);
+
+        // Background
+        ctx.fillStyle = bg;
+        ctx.fillRect(offsetX, offsetY, qrPx, qrPx);
+
+        // Draw QR modules
+        for (var r = 0; r < modCount; r++) {
+            for (var c = 0; c < modCount; c++) {
+                if (qrobj.isDark(r, c)) {
+                    ctx.fillStyle = fg;
+                    ctx.fillRect(offsetX + c * cellSize, offsetY + r * cellSize, cellSize, cellSize);
+                }
+            }
+        }
+
+        // Logo
+        if (entryLogoImg && entryLogoImg.complete && entryLogoImg.naturalWidth > 0) {
+            var ls = Math.floor(qrPx * logoRatio / 100);
+            if (ls > 8) {
+                var lx = offsetX + Math.floor((qrPx - ls) / 2);
+                var ly = offsetY + Math.floor((qrPx - ls) / 2);
+                var lp = Math.max(1, Math.round(ls * 0.15));
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(lx - lp, ly - lp, ls + lp * 2, ls + lp * 2);
+                ctx.drawImage(entryLogoImg, lx, ly, ls, ls);
+            }
+        }
+
+        // Label
+        if (tag) {
+            var lfs = Math.max(10, fontSize);
+            ctx.fillStyle = fg;
+            ctx.font = lfs + 'px ' + CJK_FONT;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            var lY = offsetY + qrPx + Math.round((labelH - lfs) / 2);
+            var maxW = qrPx - 10;
+            // Wrap
+            var lines = [];
+            var cur = '';
+            for (var i = 0; i < tag.length; i++) {
+                var test = cur + tag[i];
+                if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = tag[i]; }
+                else cur = test;
+            }
+            if (cur) lines.push(cur);
+            if (lines.length > 2) lines = lines.slice(0, 2);
+            var lh = Math.round(lfs * 1.3);
+            var sY = lY;
+            if (lines.length === 2) sY = lY - Math.round(lh / 2);
+            for (var li = 0; li < lines.length; li++) {
+                ctx.fillText(lines[li], canvasW / 2, sY + li * lh);
+            }
+        }
+    } catch(e) {}
+
+    document.getElementById('entrySettingsTagPreview').textContent = tag || '-';
+}
+
+// ================================================================
+//  SAVE - Edit content
+// ================================================================
+
+document.getElementById('btnSaveEdit').addEventListener('click', function() {
+    if (!foundCode) return;
+    var targetUrl = getCurrentTargetUrl();
+    if (!targetUrl) { showToast('请填写内容', 'error'); return; }
+
+    var btn = this;
+    btn.disabled = true; btn.textContent = '⏳ 保存中…';
+
+    fetch('/api/update.php', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'code=' + encodeURIComponent(foundCode.code) + '&target_url=' + encodeURIComponent(targetUrl)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+        if (res.success) {
+            document.getElementById('editMsg').innerHTML = '<span style="color:var(--success)">✅ 内容已保存</span>';
+            showToast('保存成功', 'success');
+            foundCode.target_url = targetUrl;
+            updateEditPreview(foundCode.redirect_url, targetUrl, entryEditType);
+        } else {
+            document.getElementById('editMsg').innerHTML = '<span style="color:var(--danger)">❌ ' + escHtml(res.error || '保存失败') + '</span>';
+        }
+        btn.disabled = false; btn.textContent = '💾 保存修改';
+    })
+    .catch(function() {
+        document.getElementById('editMsg').innerHTML = '<span style="color:var(--danger)">❌ 网络错误</span>';
+        btn.disabled = false; btn.textContent = '💾 保存修改';
+    });
+});
+
+// ================================================================
+//  SAVE - Settings
+// ================================================================
+
+document.getElementById('btnSaveSettings').addEventListener('click', function() {
+    if (!foundCode) return;
+
+    var btn = this;
+    btn.disabled = true; btn.textContent = '⏳ 保存中…';
+
+    var body = 'code=' + encodeURIComponent(foundCode.code) +
+               '&label=' + encodeURIComponent(document.getElementById('entrySettingLabel').value.trim()) +
+               '&status=' + document.getElementById('entrySettingStatus').value +
+               '&expires_at=' + encodeURIComponent(document.getElementById('entrySettingExpiry').value) +
+               '&max_scans=' + encodeURIComponent(document.getElementById('entrySettingMaxScans').value) +
+               '&qr_tag=' + encodeURIComponent(document.getElementById('entrySettingTag').value.trim()) +
+               '&qr_tag_font_size=' + document.getElementById('entrySettingTagSize').value +
+               '&qr_logo=' + encodeURIComponent(entryLogoData || '');
+
+    fetch('/api/update.php', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+        if (res.success) {
+            document.getElementById('settingsMsg').innerHTML = '<span style="color:var(--success)">✅ 设置已保存</span>';
+            showToast('设置保存成功', 'success');
+            foundCode.label = document.getElementById('entrySettingLabel').value.trim();
+            foundCode.status = parseInt(document.getElementById('entrySettingStatus').value);
+            foundCode.expires_at = document.getElementById('entrySettingExpiry').value;
+            foundCode.max_scans = document.getElementById('entrySettingMaxScans').value || null;
+            foundCode.qr_tag = document.getElementById('entrySettingTag').value.trim();
+        } else {
+            document.getElementById('settingsMsg').innerHTML = '<span style="color:var(--danger)">❌ ' + escHtml(res.error || '保存失败') + '</span>';
+        }
+        btn.disabled = false; btn.textContent = '💾 保存设置';
+    })
+    .catch(function() {
+        document.getElementById('settingsMsg').innerHTML = '<span style="color:var(--danger)">❌ 网络错误</span>';
+        btn.disabled = false; btn.textContent = '💾 保存设置';
+    });
+});
+
+// ================================================================
+//  DELETE
+// ================================================================
+
+function deleteCurrentCode() {
+    if (!foundCode) return;
+    if (!confirm('确定要删除空码 ' + foundCode.code + ' 吗？此操作不可恢复！')) return;
+
+    fetch('/api/delete.php', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'code=' + encodeURIComponent(foundCode.code)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+        if (res.success) {
+            showToast('空码 ' + foundCode.code + ' 已删除', 'success');
+            hideAllResults();
+            var containerId = currentTab === 'scan' ? 'scanResult' : 'searchResult';
+            showResultMsg(containerId, 'success', '🗑', '已删除', '空码 <b style="font-family:monospace">' + escHtml(foundCode.code) + '</b> 已被成功删除');
+            foundCode = null;
+        } else {
+            showToast(res.error || '删除失败', 'error');
+        }
+    })
+    .catch(function() { showToast('网络错误', 'error'); });
+}
+
+// ================================================================
+//  HELPERS
+// ================================================================
+
+function escHtml(s) {
+    if (!s) return '';
+    return (''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function escAttr(s) {
+    if (!s) return '';
+    return (''+s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ===== REFRESH / RESET FUNCTIONS =====
+function refreshScanTab() {
+    // Stop camera if running
+    stopCamera();
+    // Clear scan result
+    document.getElementById('scanResult').innerHTML = '';
+    // Clear upload preview
+    var up = document.getElementById('uploadPreview');
+    up.src = ''; up.style.display = 'none';
+    document.getElementById('qrFileInput').value = '';
+    // Hide content display and edit section
+    var cd = document.getElementById('contentDisplay');
+    if (cd) cd.classList.remove('show');
+    var es = document.getElementById('editSection');
+    if (es) es.classList.remove('show');
+    // If on scan tab, restart camera
+    switchTab('scan');
+    setTimeout(function() { startScanLoop(); }, 300);
+    showToast('扫码面板已重置', 'info');
+}
+function resetSearchTab() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchResult').innerHTML = '';
+    // Hide content display and edit section
+    var cd = document.getElementById('contentDisplay');
+    if (cd) cd.classList.remove('show');
+    var es = document.getElementById('editSection');
+    if (es) es.classList.remove('show');
+    switchTab('search');
+    showToast('查询面板已清空', 'info');
+}
+function refreshCurrentEntryTab() {
+    var scanTab = document.getElementById('tab-scan');
+    if (scanTab && scanTab.classList.contains('active')) {
+        refreshScanTab();
+    } else {
+        resetSearchTab();
+    }
+}
+</script>
+</body>
+</html>

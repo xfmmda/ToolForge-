@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Forge - 二维码生成器</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%2300d4ff' width='100' height='100' rx='15'/><text x='50' y='68' text-anchor='middle' font-size='55' fill='white'>Q</text></svg>">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--accent:#00d4ff;--accent2:#0090ff;--bg:#0a0e27;--card:rgba(20,25,50,0.85);--border:rgba(0,212,255,0.15);--text:#e0e0e0;--muted:#8a8fa8;--danger:#ff4757;--success:#2ed573}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+        .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);background-size:60px 60px;z-index:0}
+        .bg-glow{position:fixed;width:600px;height:600px;border-radius:50%;filter:blur(120px);z-index:0}
+        .glow1{background:rgba(0,212,255,0.08);top:-200px;left:-100px}
+        .glow2{background:rgba(255,0,128,0.06);bottom:-200px;right:-100px}
+        .container{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:32px 20px}
+        .header{text-align:center;margin-bottom:36px}
+        .header h1{font-size:38px;font-weight:800;letter-spacing:-1px;color:#fff}
+        .header h1 span{color:var(--accent)}
+        .header p{font-size:15px;color:var(--muted);margin-top:6px}
+        .tab-bar{display:flex;gap:8px;margin-bottom:24px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px}
+        .tab-btn{flex:1;padding:10px 16px;background:transparent;border:none;color:var(--muted);font-size:15px;font-weight:600;cursor:pointer;border-radius:8px;transition:all .2s}
+        .tab-btn:hover{color:var(--text)}
+        .tab-btn.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+        .tab-content{display:none}
+        .tab-content.active{display:block}
+        .panel{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;backdrop-filter:blur(10px)}
+        .panel-title{font-size:16px;font-weight:700;color:var(--accent);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+        .panel-title::before{content:'';display:inline-block;width:4px;height:18px;background:var(--accent);border-radius:2px}
+        .input-group{margin-bottom:14px}
+        .input-group label{font-size:13px;color:var(--muted);margin-bottom:5px;display:block}
+        textarea,select,input[type="text"],input[type="number"]{width:100%;background:rgba(10,14,39,0.8);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:14px;padding:10px 12px;outline:none;transition:border-color .2s;font-family:inherit}
+        textarea:focus,select:focus,input:focus{border-color:var(--accent)}
+        textarea{resize:vertical;min-height:60px}
+        select{cursor:pointer}
+        input[type="file"]{color:var(--muted);font-size:13px}
+        .color-row{display:flex;gap:12px}
+        .color-row .input-group{flex:1}
+        .color-picker-wrap{display:flex;align-items:center;gap:8px}
+        input[type="color"]{width:32px;height:32px;border:2px solid var(--border);border-radius:8px;cursor:pointer;background:transparent;padding:2px}
+        .color-hex{font-size:12px;color:var(--muted)}
+        .slider-wrap{display:flex;align-items:center;gap:12px}
+        input[type="range"]{flex:1;accent-color:var(--accent);height:4px}
+        .slider-val{font-size:13px;color:var(--accent);min-width:55px;text-align:right}
+        .btn{padding:10px 18px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-size:14px;font-weight:600;border:none;border-radius:10px;cursor:pointer;transition:transform .15s,box-shadow .15s}
+        .btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,212,255,0.25)}
+        .btn:active{transform:scale(0.97)}
+        .btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
+        .btn-outline{background:rgba(0,212,255,0.12);border:1px solid rgba(0,212,255,0.3);color:var(--accent);box-shadow:none}
+        .btn-outline:hover{background:rgba(0,212,255,0.2);border-color:var(--accent)}
+        .btn-danger{background:rgba(255,71,87,0.15);border:1px solid rgba(255,71,87,0.3);color:var(--danger)}
+        .btn-danger:hover{background:rgba(255,71,87,0.25)}
+        .btn-full{width:100%}
+        .btn-row{display:flex;gap:10px;flex-wrap:wrap}
+        .qr-preview-wrap{display:flex;flex-direction:column;align-items:center;gap:16px}
+        .qr-frame{width:300px;background:#fff;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 0 30px rgba(0,212,255,0.1);overflow:hidden;position:relative;padding:10px;gap:4px}
+        .qr-frame canvas{width:280px;height:280px}
+        .qr-placeholder{color:#555;font-size:13px;text-align:center}
+        .single-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+        @media(max-width:700px){.single-grid{grid-template-columns:1fr}}
+        .batch-upload{border:2px dashed var(--border);border-radius:16px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s;background:rgba(10,14,39,0.5)}
+        .batch-upload:hover{border-color:var(--accent)}
+        .batch-upload input[type="file"]{display:none}
+        .batch-upload-icon{font-size:48px;color:var(--accent);margin-bottom:12px}
+        .batch-upload-text{font-size:14px;color:var(--muted)}
+        .data-table-wrap{max-height:400px;overflow:auto;border:1px solid var(--border);border-radius:12px;margin-top:12px}
+        .data-table{width:100%;border-collapse:collapse;font-size:13px}
+        .data-table th{background:rgba(0,212,255,0.1);color:var(--accent);padding:8px 10px;text-align:left;position:sticky;top:0;cursor:pointer;white-space:nowrap;user-select:none}
+        .data-table th:hover{background:rgba(0,212,255,0.2)}
+        .data-table td{padding:6px 10px;border-bottom:1px solid rgba(0,212,255,0.05);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .data-table tr:hover td{background:rgba(0,212,255,0.04)}
+        .data-table .cell-edit{background:rgba(10,14,39,0.9);border:1px solid var(--accent);color:#fff;padding:4px 6px;width:100%;font-size:12px;border-radius:4px}
+        .search-bar{display:flex;gap:10px;margin-bottom:12px;align-items:center}
+        .search-bar input{flex:1;padding:8px 12px;font-size:13px}
+        .batch-stats{display:flex;gap:16px;margin:12px 0;font-size:13px;color:var(--muted)}
+        .batch-stats span{color:var(--accent);font-weight:600}
+        .col-config{display:flex;gap:16px;margin:12px 0;align-items:center}
+        .col-config select{width:auto;min-width:120px}
+        .qr-mini{width:40px;height:40px;cursor:pointer;border-radius:4px;transition:transform .15s}
+        .qr-mini:hover{transform:scale(2.5);z-index:10;position:relative}
+        .pdf-config{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:12px 0}
+        @media(max-width:500px){.pdf-config{grid-template-columns:1fr}}
+        .undo-bar{display:flex;gap:6px;margin-bottom:8px;align-items:center;flex-wrap:wrap}
+        .undo-bar .btn-sm{opacity:1;cursor:pointer;transition:opacity .2s}
+        .undo-bar .btn-sm[disabled]{opacity:0.35;cursor:not-allowed;pointer-events:none}
+        .footer{text-align:center;margin-top:24px;font-size:12px;color:#5a5f78}
+        .toast{position:fixed;top:20px;right:20px;background:var(--card);border:1px solid var(--border);border:10px;padding:12px 18px;z-index:200;font-size:13px;color:var(--text);transform:translateX(120%);transition:transform .3s}
+        .toast.show{transform:translateX(0)}
+        .toast.success{border-color:var(--success);color:var(--success)}
+        .toast.error{border-color:var(--danger);color:var(--danger)}
+        kbd{background:rgba(0,212,255,0.1);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-size:11px;color:var(--accent)}
+        .logo-preview{display:inline-block}
+        /* Responsive */
+        @media(max-width:600px){
+            .container{padding:16px 10px}
+            .header{margin-bottom:20px}
+            .header h1{font-size:26px}
+            .header p{font-size:13px}
+            .tab-bar{overflow-x:auto;gap:4px;padding:6px}
+            .tab-btn{flex:0 0 auto;min-width:fit-content;padding:8px 12px;font-size:13px;white-space:nowrap}
+            .single-grid{grid-template-columns:1fr;gap:14px}
+            .panel{padding:14px 14px}
+            .panel-title{font-size:14px}
+            .qr-frame{width:100%;max-width:280px}
+            .qr-frame canvas{width:100%!important;height:auto!important}
+            .color-row{flex-direction:column;gap:8px}
+            .pdf-config{grid-template-columns:1fr 1fr;gap:8px}
+            .data-table-wrap{margin:0 -14px;border-radius:0}
+            .data-table{font-size:12px}
+            .data-table th,.data-table td{padding:6px 8px}
+            .batch-upload{padding:20px 14px}
+            .batch-upload-icon{font-size:32px}
+            .batch-upload-text{font-size:12px}
+            .search-bar{flex-direction:column;gap:6px}
+            .col-config{flex-direction:column;gap:8px}
+            .btn{font-size:13px;padding:8px 14px}
+            .btn-sm{padding:5px 10px;font-size:11px}
+            .btn-row{flex-direction:column;gap:6px}
+            .undo-bar{gap:4px}
+            .batch-stats{flex-wrap:wrap;gap:8px;font-size:11px}
+            .toast{left:10px;right:10px;top:auto;bottom:10px;text-align:center;transform:translateY(120%)}
+            .toast.show{transform:translateY(0)}
+            .footer{font-size:11px;margin-top:16px}
+        }
+        /* ---- Edit type cards ---- */
+        .edit-type-cards{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+        .edit-type-card{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;border:2px solid var(--border);background:rgba(10,14,39,0.8);cursor:pointer;transition:all .2s}
+        .edit-type-card:hover{border-color:var(--accent);background:rgba(0,212,255,0.04)}
+        .edit-type-card.active{border-color:var(--accent);background:rgba(0,212,255,0.08);box-shadow:0 0 0 1px rgba(0,212,255,0.15)}
+        .edit-type-card input{display:none}
+        .type-icon{font-size:22px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:rgba(0,212,255,0.08);border-radius:8px;flex-shrink:0}
+        .type-name{font-weight:600;font-size:13px;color:#e0e0e0}
+        .type-desc{font-size:10px;color:var(--muted);margin-left:auto}
+        .edit-mode-panel{display:block}
+        @media(max-width:600px){.type-desc{display:none}.edit-type-card{padding:10px 12px}}
+        /* ---- Rich text editor ---- */
+        .rich-editor-toolbar{display:flex;gap:1px;padding:5px 6px;margin-bottom:4px;background:rgba(10,14,39,0.8);border-radius:8px 8px 0 0;border:1px solid var(--border);border-bottom:none;flex-wrap:wrap;align-items:center}
+        .rich-btn{width:26px;height:24px;display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;background:none;color:var(--muted);font-size:11px;border-radius:4px;cursor:pointer;font-family:inherit;transition:all .15s;position:relative}
+        .rich-btn:hover{background:rgba(0,212,255,0.08);color:var(--accent)}
+        .rich-btn.rich-btn-icon{font-size:13px;font-weight:500}
+        .rich-btn.rich-btn-bold{font-weight:700}
+        .rich-btn.rich-btn-italic{font-style:italic;font-family:Georgia,serif}
+        .rich-sep{width:1px;height:16px;background:var(--border);margin:0 3px;align-self:center}
+        .rich-select{padding:1px 3px;font-size:10px;border:1px solid var(--border);border-radius:4px;background:rgba(10,14,39,0.8);color:var(--text);cursor:pointer;height:24px;outline:none;max-width:60px}
+        .rich-select:focus{border-color:var(--accent)}
+        .rich-editor{min-height:180px;max-height:300px;padding:12px;border:2px solid var(--border);border-radius:0 0 8px 8px;background:rgba(10,14,39,0.8);color:var(--text);font-size:14px;line-height:1.7;outline:none;overflow:auto;border-top-color:var(--border)}
+        .rich-editor:focus{border-color:var(--accent)}
+        .rich-editor:empty:before{content:attr(placeholder);color:var(--muted);pointer-events:none}
+        .rich-editor h1{font-size:1.8em;font-weight:700;margin:.3em 0}
+        .rich-editor h2{font-size:1.4em;font-weight:700;margin:.3em 0}
+        .rich-editor h3{font-size:1.1em;font-weight:700;margin:.3em 0}
+        .rich-editor pre{background:rgba(0,0,0,0.3);padding:10px;border-radius:6px;font-family:monospace;overflow-x:auto}
+        .rich-editor blockquote{border-left:3px solid var(--accent);margin:6px 0;padding:4px 10px;color:var(--muted)}
+        .rich-editor ol,.rich-editor ul{padding-left:20px}
+        @media(max-width:600px){.rich-btn{width:24px;height:22px;font-size:10px}.rich-editor-toolbar{gap:0;padding:4px}}
+        /* ---- Image upload area ---- */
+        .image-upload-area{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:28px 16px;border:2px dashed var(--border);border-radius:10px;cursor:pointer;transition:all .2s;text-align:center;color:var(--muted);font-size:13px}
+        .image-upload-area:hover{border-color:var(--accent);background:rgba(0,212,255,0.03)}
+        .image-upload-area:active{border-color:var(--accent);background:rgba(0,212,255,0.06)}
+        .upload-icon{font-size:28px;margin-bottom:2px}
+        .image-preview-wrap{margin-top:8px;text-align:center}
+        .image-preview-wrap img{max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)}
+        /* ---- Markdown editor ---- */
+        .md-editor-wrap{display:flex;border:2px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .2s;min-height:280px}
+        .md-editor-wrap:focus-within{border-color:var(--accent)}
+        .md-editor-pane-left{flex:1;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--border)}
+        .md-editor-textarea{flex:1;padding:12px;border:none;outline:none;resize:none;font-family:Consolas,monospace;font-size:13px;line-height:1.6;background:rgba(10,14,39,0.8);color:var(--text)}
+        .md-editor-pane-right{flex:1;min-width:0;overflow:auto;padding:12px;background:rgba(20,25,50,0.85);font-size:13px;line-height:1.6;color:var(--text)}
+        .md-editor-pane-right h1{font-size:20px;border-bottom:2px solid var(--border);padding-bottom:6px}
+        .md-editor-pane-right h2{font-size:16px}
+        .md-editor-pane-right h3{font-size:14px}
+        .md-editor-pane-right code{background:rgba(0,0,0,0.3);padding:2px 4px;border-radius:3px;font-size:12px;font-family:monospace}
+        .md-editor-pane-right pre{background:rgba(0,0,0,0.3);padding:10px;border-radius:6px;overflow:auto;font-size:12px}
+        .md-editor-pane-right pre code{padding:0;background:none}
+        .md-editor-pane-right blockquote{border-left:3px solid var(--accent);margin:8px 0;padding:2px 10px;color:var(--muted)}
+        .md-editor-pane-right ul,.md-editor-pane-right ol{padding-left:20px;margin:6px 0}
+        .md-editor-pane-right a{color:var(--accent)}
+        .md-editor-empty{color:var(--muted);font-style:italic;display:flex;align-items:center;justify-content:center;height:100%}
+        @media(max-width:600px){.md-editor-wrap{flex-direction:column;min-height:240px}.md-editor-pane-left{border-right:none;border-bottom:1px solid var(--border);max-height:160px}.md-editor-pane-right{max-height:160px}}
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow glow1"></div>
+    <div class="bg-glow glow2"></div>
+    <div class="container">
+        <div class="header">
+            <h1>QR <span>Forge</span></h1>
+            <p>单个 & 批量二维码生成 · Excel/CSV 导入 · PDF 导出 · Logo 嵌入 · 数据不离开浏览器</p>
+        </div>
+        <div class="tab-bar">
+            <button class="tab-btn" data-tab="single">✨ 单个生成</button>
+            <button class="tab-btn" data-tab="batch">📦 批量生成</button>
+            <button class="tab-btn" data-tab="help" style="flex:0;min-width:60px">📖 说明</button>
+        </div>
+
+        <!-- SINGLE TAB -->
+        <div class="tab-content active" id="tab-single">
+            <div class="single-grid">
+                <div class="panel">
+                    <div class="panel-title">编辑内容</div>
+                    <div class="edit-type-cards">
+                        <label class="edit-type-card active" data-etype="url">
+                            <input type="radio" name="singleEditType" value="url" checked onchange="setSingleEditMode('url')">
+                            <span class="type-icon">🌐</span>
+                            <span class="type-name">网页链接</span>
+                            <span class="type-desc">网址</span>
+                        </label>
+                        <label class="edit-type-card" data-etype="text">
+                            <input type="radio" name="singleEditType" value="text" onchange="setSingleEditMode('text')">
+                            <span class="type-icon">📝</span>
+                            <span class="type-name">文本内容</span>
+                            <span class="type-desc">富文本</span>
+                        </label>
+                        <label class="edit-type-card" data-etype="image">
+                            <input type="radio" name="singleEditType" value="image" onchange="setSingleEditMode('image')">
+                            <span class="type-icon">🖼</span>
+                            <span class="type-name">图片链接</span>
+                            <span class="type-desc">图片</span>
+                        </label>
+                        <label class="edit-type-card" data-etype="markdown">
+                            <input type="radio" name="singleEditType" value="markdown" onchange="setSingleEditMode('markdown')">
+                            <span class="type-icon">📑</span>
+                            <span class="type-name">Markdown</span>
+                            <span class="type-desc">标记</span>
+                        </label>
+                    </div>
+
+                    <!-- URL mode panel -->
+                    <div id="singleUrlPanel" class="edit-mode-panel">
+                        <div class="input-group"><label>文本 / 网址 / 内容</label><textarea id="singleText" rows="4" placeholder="输入文字、网址、WiFi 信息等…" style="min-height:80px">https://www.1772584873.icu/</textarea></div>
+                    </div>
+
+                    <!-- Text mode panel -->
+                    <div id="singleTextPanel" class="edit-mode-panel" style="display:none">
+                        <div class="rich-editor-toolbar" id="singleTextToolbar">
+                            <button type="button" class="rich-btn rich-btn-icon" onclick="execRichCmd('undo')" title="撤销">↩</button>
+                            <button type="button" class="rich-btn rich-btn-icon" onclick="execRichCmd('redo')" title="重做">↪</button>
+                            <span class="rich-sep"></span>
+                            <select class="rich-select" onchange="execRichCmd('formatBlock','<'+this.value+'>');this.value=''" title="段落">
+                                <option value="">正文</option><option value="h1">H1</option><option value="h2">H2</option><option value="h3">H3</option><option value="pre">代码</option>
+                            </select>
+                            <span class="rich-sep"></span>
+                            <button type="button" class="rich-btn rich-btn-bold" onclick="execRichCmd('bold')" title="粗体">B</button>
+                            <button type="button" class="rich-btn rich-btn-italic" onclick="execRichCmd('italic')" title="斜体">I</button>
+                            <button type="button" class="rich-btn" onclick="execRichCmd('underline')" title="下划线"><u>U</u></button>
+                            <button type="button" class="rich-btn" onclick="execRichCmd('strikeThrough')" title="删除线"><s>S</s></button>
+                        </div>
+                        <div class="rich-editor" id="singleRichEditor" contenteditable="true" placeholder="输入文本内容…支持富文本格式"></div>
+                    </div>
+
+                    <!-- Image mode panel -->
+                    <div id="singleImagePanel" class="edit-mode-panel" style="display:none">
+                        <div class="input-group"><label>图片网址（扫码后跳转该地址）</label><input type="text" class="form-input" id="singleImageUrl" placeholder="https://example.com/image.jpg" style="width:100%;background:rgba(10,14,39,0.8);border:1px solid var(--border);border-radius:10px;color:#fff;font-size:14px;padding:10px 12px;outline:none"></div>
+                        <label class="image-upload-area" id="singleImageUploadArea" for="singleImageFile">
+                            <span class="upload-icon">🖼</span>
+                            <span>点击上传本地图片</span>
+                            <span style="font-size:11px">支持 JPG/PNG/GIF/WebP</span>
+                        </label>
+                        <input type="file" id="singleImageFile" accept="image/*" style="display:none" onchange="handleSingleImageUpload(this.files)">
+                        <div class="image-preview-wrap" id="singleImagePreviewWrap" style="display:none">
+                            <img id="singleImagePreview" style="max-width:100%;max-height:160px;border-radius:8px;border:1px solid var(--border)">
+                            <br><button class="btn-outline btn-sm" onclick="clearSingleImage()" style="margin-top:6px">✕ 移除</button>
+                        </div>
+                    </div>
+
+                    <!-- Markdown mode panel -->
+                    <div id="singleMarkdownPanel" class="edit-mode-panel" style="display:none">
+                        <div class="md-editor-wrap">
+                            <div class="md-editor-pane-left">
+                                <textarea class="md-editor-textarea" id="singleMdTextarea" placeholder="输入 Markdown…" oninput="mdUpdateSinglePreview()"></textarea>
+                            </div>
+                            <div class="md-editor-pane-right" id="singleMdPreview">
+                                <span class="md-editor-empty">开始输入 Markdown，此处显示实时预览</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>标签文本（可选，显示在二维码下方）</label>
+                        <input type="text" id="singleLabel" value="官网" placeholder="如：扫码访问官网">
+                    </div>
+                    <div class="label-options" id="singleLabelOptions" style="display:none;margin-bottom:14px;border-left:2px solid var(--accent);padding-left:12px">
+                        <div class="color-row">
+                            <div class="input-group"><label>标签字号</label><select id="singleLabelFs"><option value="auto" selected>自适应</option><option value="8">8 pt</option><option value="10">10 pt</option><option value="12">12 pt</option><option value="14">14 pt</option><option value="16">16 pt</option><option value="18">18 pt</option><option value="20">20 pt</option><option value="22">22 pt</option><option value="24">24 pt</option><option value="28">28 pt</option><option value="32">32 pt</option><option value="36">36 pt</option><option value="40">40 pt</option><option value="48">48 pt</option><option value="56">56 pt</option><option value="72">72 pt</option></select><span id="singleLabelFsHint" style="font-size:11px;color:var(--accent);margin-left:8px"></span></div>
+                            <div class="input-group"><label>标签颜色</label><div class="color-picker-wrap"><input type="color" id="singleLabelColor" value="#333333"><span class="color-hex" id="singleLabelColorHex">#333333</span></div></div>
+                        </div>
+                    </div>
+                    <div class="panel-title" style="margin-top:4px">样式设置</div>
+                    <div class="input-group">
+                        <label>纠错等级（嵌入Logo建议选 Q 或 H）</label>
+                        <select id="singleEC"><option value="L">L — 低</option><option value="M">M — 中</option><option value="Q" selected>Q — 较高（推荐）</option><option value="H">H — 最高</option></select>
+                    </div>
+                    <div class="color-row">
+                        <div class="input-group"><label>前景色</label><div class="color-picker-wrap"><input type="color" id="singleFg" value="#000000"><span class="color-hex" id="singleFgHex">#000000</span></div></div>
+                        <div class="input-group"><label>背景色</label><div class="color-picker-wrap"><input type="color" id="singleBg" value="#ffffff"><span class="color-hex" id="singleBgHex">#ffffff</span></div></div>
+                    </div>
+                    <div class="input-group">
+                        <label>输出尺寸</label>
+                        <div class="slider-wrap"><input type="range" id="singleSize" min="200" max="1000" step="50" value="400"><span class="slider-val" id="singleSizeVal">400 × 400</span></div>
+                    </div>
+                    <div class="panel-title" style="margin-top:4px">Logo 设置（可选）</div>
+                    <p style="font-size:11px;color:var(--muted);margin-bottom:10px">在二维码中间嵌入 Logo 图片（建议纠错等级选 Q 或 H，Logo 不宜过大）</p>
+                    <div class="input-group">
+                        <label>上传 Logo 图片</label>
+                        <input type="file" id="singleLogo" accept="image/*">
+                    </div>
+                    <div id="logoPreviewWrap" style="display:none;margin-bottom:12px;text-align:center">
+                        <img id="logoPreviewImg" style="max-width:60px;max-height:60px;border-radius:8px;border:1px solid var(--border)">
+                        <br><button class="btn-outline btn-sm" id="btnRemoveLogo" style="margin-top:4px">✕ 移除 Logo</button>
+                    </div>
+                    <div class="input-group">
+                        <label>Logo 尺寸占比</label>
+                        <div class="slider-wrap"><input type="range" id="singleLogoSize" min="10" max="30" step="1" value="20"><span class="slider-val" id="singleLogoSizeVal">20%</span></div>
+                    </div>
+                </div>
+                <div class="panel qr-preview-wrap">
+                    <div class="panel-title">生成结果</div>
+                    <div class="qr-frame" id="singleFrame">
+                        <canvas id="singleQrCanvas" width="1000" height="1000"></canvas>
+                        <div class="qr-placeholder" id="singleQrPlaceholder">输入内容后自动生成二维码</div>
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn-outline btn-sm" id="btnSinglePng" disabled>📥 PNG</button>
+                        <button class="btn-outline btn-sm" id="btnSinglePdf" disabled>📄 PDF</button>
+                        <button class="btn-outline btn-sm" id="btnSingleSvg" disabled>📥 SVG</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BATCH TAB -->
+        <div class="tab-content" id="tab-batch">
+            <div class="panel" style="margin-bottom:16px">
+                <div class="panel-title">数据来源</div>
+                <div class="batch-upload" id="batchUpload">
+                    <div class="batch-upload-icon">📂</div>
+                    <div class="batch-upload-text">点击或拖拽上传 Excel (.xlsx/.xls) 或 CSV 文件</div>
+                    <input type="file" id="batchFile" accept=".xlsx,.xls,.csv">
+                </div>
+                <div class="input-group" style="margin-top:12px">
+                    <label>没有模板？下载演示文档</label>
+                    <button class="btn btn-sm" id="btnDownloadDemo" style="margin-top:6px">📥 下载 Excel 演示模板</button>
+                    <p style="font-size:11px;color:var(--muted);margin-top:4px">模板包含「内容」和「标签」两列示例数据，修改后上传即可批量生成</p>
+                </div>
+                <div class="btn-row" style="margin-top:10px">
+                    <button class="btn-danger btn-sm" id="btnBatchClear">🗑 清空数据</button>
+                </div>
+            </div>
+
+            <div class="panel" id="batchDataPanel" style="display:none">
+                <div class="panel-title">数据预览与编辑</div>
+                <div class="col-config">
+                    <div class="input-group" style="margin:0"><label>内容列</label><select id="colContent"></select></div>
+                    <div class="input-group" style="margin:0"><label>标签列（可选）</label><select id="colLabel"><option value="">无标签</option></select></div>
+                </div>
+                <div class="undo-bar">
+                    <button class="btn-outline btn-sm" id="btnUndo" disabled>↩ 撤销</button>
+                    <button class="btn-danger btn-sm" id="btnReset" disabled>↪ 重置为原始数据</button>
+                    <span style="font-size:11px;color:var(--muted)" id="undoInfo"></span>
+                </div>
+                <div class="search-bar">
+                    <input type="text" id="batchSearch" placeholder="搜索…">
+                    <span style="font-size:12px;color:var(--muted)" id="batchCount"></span>
+                </div>
+                <div class="data-table-wrap">
+                    <table class="data-table" id="batchTable"><thead id="batchHead"></thead><tbody id="batchBody"></tbody></table>
+                </div>
+                <div class="batch-stats">总行数: <span id="statTotal">0</span> · 已过滤: <span id="statFiltered">0</span></div>
+            </div>
+
+            <div class="panel" id="batchStylePanel" style="display:none;margin-top:16px">
+                <div class="panel-title">批量样式与导出</div>
+                <div class="input-group">
+                    <label>纠错等级（嵌入Logo建议选 Q 或 H）</label>
+                    <select id="batchEC"><option value="L">L — 低</option><option value="M" selected>M — 中（推荐）</option><option value="Q">Q — 较高</option><option value="H">H — 最高</option></select>
+                </div>
+                <div class="color-row">
+                    <div class="input-group"><label>前景色</label><div class="color-picker-wrap"><input type="color" id="batchFg" value="#000000"><span class="color-hex" id="batchFgHex">#000000</span></div></div>
+                    <div class="input-group"><label>背景色</label><div class="color-picker-wrap"><input type="color" id="batchBg" value="#ffffff"><span class="color-hex" id="batchBgHex">#ffffff</span></div></div>
+                </div>
+                <div class="input-group">
+                    <label>单个二维码尺寸</label>
+                    <div class="slider-wrap"><input type="range" id="batchSize" min="100" max="400" step="25" value="200"><span class="slider-val" id="batchSizeVal">200 × 200</span></div>
+                </div>
+                <div class="panel-title" style="margin-top:4px">Logo 设置（可选）</div>
+                <p style="font-size:11px;color:var(--muted);margin-bottom:10px">批量二维码中间嵌入 Logo（建议纠错等级选 Q 或 H）</p>
+                <div class="input-group">
+                    <label>上传 Logo 图片</label>
+                    <input type="file" id="batchLogo" accept="image/*">
+                </div>
+                <div id="batchLogoPreviewWrap" style="display:none;margin-bottom:12px;text-align:center">
+                    <img id="batchLogoPreviewImg" style="max-width:60px;max-height:60px;border-radius:8px;border:1px solid var(--border)">
+                    <br><button class="btn-outline btn-sm" id="btnRemoveBatchLogo" style="margin-top:4px">✕ 移除 Logo</button>
+                </div>
+                <div class="input-group">
+                    <label>Logo 尺寸占比</label>
+                    <div class="slider-wrap"><input type="range" id="batchLogoSize" min="10" max="30" step="1" value="20"><span class="slider-val" id="batchLogoSizeVal">20%</span></div>
+                </div>
+                <div class="pdf-config">
+                    <div class="input-group"><label>PDF 每页列数</label><select id="pdfCols"><option value="2">2 列</option><option value="3" selected>3 列</option><option value="4">4 列</option><option value="5">5 列</option></select></div>
+                    <div class="input-group"><label>PDF 每页行数</label><select id="pdfRows"><option value="3">3 行</option><option value="4" selected>4 行</option><option value="5">5 行</option><option value="6">6 行</option></select></div>
+                    <div class="input-group"><label>标签字体大小</label><select id="pdfLabelSize"><option value="auto" selected>自适应</option><option value="6">6 pt</option><option value="7">7 pt</option><option value="8">8 pt</option><option value="9">9 pt</option><option value="10">10 pt</option><option value="11">11 pt</option><option value="12">12 pt</option><option value="14">14 pt</option><option value="16">16 pt</option><option value="18">18 pt</option><option value="20">20 pt</option><option value="22">22 pt</option><option value="24">24 pt</option><option value="28">28 pt</option><option value="32">32 pt</option><option value="36">36 pt</option><option value="40">40 pt</option><option value="48">48 pt</option><option value="56">56 pt</option><option value="72">72 pt</option></select></div>
+                </div>
+                <div class="btn-row">
+                    <button class="btn" id="btnBatchPdf">📄 导出 PDF</button>
+                    <button class="btn-outline btn-sm" id="btnBatchPreviewPdf">👁 预览 PDF</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- HELP TAB -->
+        <div class="tab-content" id="tab-help">
+            <div class="panel">
+                <div class="panel-title">使用说明</div>
+                <h3 style="color:var(--accent);font-size:15px;margin:12px 0 6px">✨ 单个二维码生成</h3>
+                <ul><li>在「文本/网址」框输入任何内容：网址、中文、WiFi 信息等</li><li>输入后自动生成二维码，无需手动点击</li><li>可选填「标签文本」，会显示在二维码下方</li><li>可上传 Logo 图片嵌入二维码中间（建议纠错等级选 Q 或 H）</li><li>调整纠错等级、颜色、尺寸后实时更新预览</li><li>支持下载 PNG、SVG 或单页 PDF</li></ul>
+                <h3 style="color:var(--accent);font-size:15px;margin:12px 0 6px">📦 批量生成</h3>
+                <ul><li><strong>文件导入</strong>：上传 Excel (.xlsx/.xls) 或 CSV 文件</li><li><strong>演示模板</strong>：点击「下载 Excel 演示模板」获取格式参考</li><li>Excel 第一行为表头，自动识别为「内容」和「标签」列</li><li>在表格中可直接 <strong>双击编辑</strong>单元格</li><li>支持 <kbd>Ctrl+Z</kbd> 撤销编辑</li><li>「重置为原始数据」按钮可恢复到上传时的初始状态</li><li>支持搜索过滤数据</li><li>点击表头可排序</li><li>批量模式也支持 Logo 嵌入</li></ul>
+                <h3 style="color:var(--accent);font-size:15px;margin:12px 0 6px">📄 PDF 导出</h3>
+                <ul><li>配置每页行列数、标签字体大小</li><li>点击「导出 PDF」生成包含所有二维码的 PDF 文件</li><li>点击表格中的二维码小图可直接下载该二维码 PNG</li></ul>
+                <h3 style="color:var(--accent);font-size:15px;margin:12px 0 6px">🔗 空码（动态二维码）</h3>
+                <ul><li><strong>什么是空码</strong>：二维码图片固定不变，但跳转目标可以随时修改</li><li>空码管理已移至独立页面，请从首页进入「空码管理」</li></ul>
+                <h3 style="color:var(--accent);font-size:15px;margin:12px 0 6px">⌨️ 快捷键</h3>
+                <ul><li><kbd>Ctrl+Z</kbd> 撤销编辑</li><li><kbd>Enter</kbd> 在搜索框中按回车过滤</li><li><kbd>Esc</kbd> 退出单元格编辑</li></ul>
+            </div>
+        </div>
+
+        <div class="footer">QR Forge · 纯前端生成 · 数据不离开浏览器<br><a href="https://www.landui.com?refer_host=lanMjY4MDk2dWk=" target="_blank"><img src="https://www.landui.com/hosting/free_host_img" style="margin-top:10px;max-width:100%;border-radius:6px">蓝队云提供免费虚拟主机</a><br><a href="https://www.landui.com/eve/a1111p?pacode=CkF3C" target="_blank" style="display:inline-block;margin-top:10px;padding:7px 16px;background:linear-gradient(135deg,#00d4ff,#0090ff);color:#fff;font-size:12px;font-weight:600;border-radius:8px;text-decoration:none">🚀 蓝队云永久免费虚拟主机 · 1G空间不限流量 · 免费SSL · 点击领取 &rarr;</a><br><span style="font-size:11px;color:#556;margin-top:4px;display:block">零成本建站首选：1G空间 + 300M数据库 + PHP/ASP双支持 + 不限流量不限连接</span><br><span onclick="showContactUs()" style="cursor:pointer;color:#00d4ff;font-size:11px;margin-top:6px;display:inline-block;transition:color .2s" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#00d4ff'">📬 联系我们</span></div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+<script>
+function showContactUs(){
+    var rand=Math.random().toString(36).substring(2,10),email=rand+'@xfmmda.cc.cd';
+    var o=document.createElement('div');o.className='modal-overlay visible';
+    o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999';
+    o.innerHTML='<div style="background:#1a1f35;border:1px solid rgba(0,212,255,.15);border-radius:16px;padding:28px 24px;max-width:400px;width:90%"><div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:8px;text-align:center">📬 联系我们</div><div style="font-size:13px;color:#888;margin-bottom:16px;text-align:center">如有任何问题或建议，欢迎联系我们</div><div style="background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.15);border-radius:10px;padding:14px;margin-bottom:16px;text-align:center"><div style="font-size:12px;color:#888;margin-bottom:6px">📧 管理员邮箱</div><div style="font-size:16px;color:#00d4ff;font-weight:700;word-break:break-all">'+email+'</div><button onclick="var b=this;navigator.clipboard.writeText(\''+email+'\').then(function(){b.textContent=\'已复制！\';setTimeout(function(){b.textContent=\'复制邮箱\'},2000)})" style="margin-top:8px;width:100%;padding:6px 12px;background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.3);color:#00d4ff;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer">复制邮箱</button></div><div style="text-align:center"><a href="mailto:'+email+'" style="display:inline-block;padding:8px 24px;background:linear-gradient(135deg,#00d4ff,#0090ff);color:#fff;font-size:13px;font-weight:600;border-radius:8px;text-decoration:none">✉️ 发送邮件</a></div><button onclick="this.parentElement.parentElement.remove()" style="margin-top:12px;width:100%;padding:8px;background:rgba(255,255,255,.08);color:#ccc;border:1px solid rgba(255,255,255,.15);border-radius:8px;cursor:pointer;font-size:13px">关闭</button></div>';
+    o.addEventListener('click',function(e){if(e.target===o)o.remove()});document.body.appendChild(o);
+}
+// UTF-8 encoding for qrcode-generator
+qrcode.stringToBytesFuncs['UTF-8'] = function(s) { return Array.from(new TextEncoder().encode(s)); };
+qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+
+let singleQR = null;
+let logoImg = null;
+let batchLogoImg = null;
+let batchRows = [], batchHeaders = [];
+let originalBatchRows = []; // Save original data for reset
+let undoStack = [];
+let sortCol = -1, sortDir = {};
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+});
+
+// Toast
+function showToast(msg, type='') {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'toast ' + type;
+    setTimeout(() => t.classList.add('show'), 10);
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// QR helpers
+function makeQR(text, ec) { const qr = qrcode(0, ec); qr.addData(text, 'Byte'); qr.make(); return qr; }
+function escHtml(s) { var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+function qrToCanvas(qr, fg, bg, size) {
+    const mc = qr.getModuleCount(), cell = Math.max(1, Math.floor(size / mc)), total = mc * cell;
+    const c = document.createElement('canvas'); c.width = total; c.height = total;
+    const ctx = c.getContext('2d'); ctx.fillStyle = bg; ctx.fillRect(0, 0, total, total); ctx.fillStyle = fg;
+    for (let r = 0; r < mc; r++) for (let col = 0; col < mc; col++) if (qr.isDark(r, col)) ctx.fillRect(col * cell, r * cell, cell, cell);
+    return c;
+}
+
+function downloadCanvas(canvas, filename) {
+    const a = document.createElement('a'); a.download = filename; a.href = canvas.toDataURL('image/png'); a.click();
+}
+
+// Logo overlay - improved padding proportional to logo size for scannability
+function applyLogoToCanvas(canvas, img, ratioPercent) {
+    if (!img) return canvas;
+    const cw = canvas.width, ch = canvas.height;
+    const logoSize = Math.round(Math.min(cw, ch) * ratioPercent / 100);
+    const padding = Math.round(logoSize * 0.15); // 15% padding around logo
+    const totalSize = logoSize + padding * 2;
+    const x = Math.round((cw - logoSize) / 2);
+    const y = Math.round((ch - logoSize) / 2);
+    const bgX = x - padding;
+    const bgY = y - padding;
+    const radius = Math.round(padding * 0.6);
+
+    const ctx = canvas.getContext('2d');
+    // Draw white rounded-rect background with sufficient padding
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, bgX, bgY, totalSize, totalSize, radius);
+    ctx.fill();
+    // Draw logo on top
+    ctx.drawImage(img, x, y, logoSize, logoSize);
+    return canvas;
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, Math.min(w,h)/2));
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+    ctx.closePath();
+}
+
+// CJK font for canvas rendering
+const CJK_FONT = "'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', 'Hiragino Sans GB', sans-serif";
+
+// Ruler drawing on 1000x1000 fixed canvas
+function drawRuler(ctx, w, h) {
+    var RM = 30; // ruler margin
+    // ruler background
+    ctx.fillStyle = '#fafafa'; ctx.fillRect(0,0,w,RM); ctx.fillRect(0,0,RM,h);
+    // corner
+    ctx.fillStyle = '#e8e8e8'; ctx.fillRect(0,0,RM,RM);
+    // borders
+    ctx.strokeStyle = '#ccc'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(RM,RM); ctx.lineTo(w,RM); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(RM,RM); ctx.lineTo(RM,h); ctx.stroke();
+    // top ticks every 100px
+    ctx.fillStyle = '#666'; ctx.font = '9px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (var x = RM; x <= w; x += 100) {
+        ctx.beginPath(); ctx.moveTo(x, RM-8); ctx.lineTo(x, RM); ctx.strokeStyle = '#999'; ctx.stroke();
+        ctx.fillText(String(x-RM), x, RM-12);
+    }
+    // left ticks every 100px
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (var y = RM; y <= h; y += 100) {
+        ctx.beginPath(); ctx.moveTo(RM-8, y); ctx.lineTo(RM, y); ctx.strokeStyle = '#999'; ctx.stroke();
+        ctx.fillText(String(y-RM), RM-10, y);
+    }
+    return RM;
+}
+
+// Auto label font size calculation
+function getSingleAutoLabelFs() {
+    const qrPx = parseInt(singleSize.value);
+    return Math.max(8, Math.min(72, Math.round(qrPx / 25)));
+}
+function getBatchAutoLabelFs(qrSizeMM) {
+    return Math.max(6, Math.min(72, Math.round(qrSizeMM * 0.3)));
+}
+function resolveSingleLabelFs() {
+    const val = document.getElementById('singleLabelFs').value;
+    return val === 'auto' ? getSingleAutoLabelFs() : parseInt(val);
+}
+function resolvePdfLabelFs(qrSizeMM) {
+    const val = document.getElementById('pdfLabelSize').value;
+    return val === 'auto' ? getBatchAutoLabelFs(qrSizeMM || 50) : parseInt(val);
+}
+
+// Label below QR (with CJK font support)
+function makeLabelCanvas(qrCanvas, label, fg, bg, fontSize) {
+    if (!label) return qrCanvas;
+    const fs = Math.max(6, fontSize || 10);
+    const labelH = Math.round(fs * 2.5);
+    const full = document.createElement('canvas'); full.width = qrCanvas.width; full.height = qrCanvas.height + labelH;
+    const ctx = full.getContext('2d');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, full.width, full.height);
+    ctx.drawImage(qrCanvas, 0, 0);
+    ctx.fillStyle = fg; ctx.font = fs + 'px ' + CJK_FONT; ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, full.width/2, qrCanvas.height + Math.round(labelH*0.5));
+    return full;
+}
+
+// Render label text as canvas image for PDF (fixes Chinese display in jsPDF)
+function renderLabelAsCanvasImage(label, fontSize, fg, width) {
+    if (!label) return null;
+    const fs = Math.max(6, fontSize || 10);
+    const labelH = Math.round(fs * 2.2);
+    const c = document.createElement('canvas');
+    c.width = Math.max(100, width || 300);
+    c.height = labelH;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillStyle = fg || '#000000';
+    ctx.font = fs + 'px ' + CJK_FONT;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, c.width/2, labelH/2);
+    return c;
+}
+
+// ===== SINGLE MODE =====
+let singleEditType = 'url';
+let singleImageData = null;
+const singleText = document.getElementById('singleText');
+const singleLabel = document.getElementById('singleLabel');
+const singleEC = document.getElementById('singleEC');
+const singleFg = document.getElementById('singleFg');
+const singleBg = document.getElementById('singleBg');
+const singleSize = document.getElementById('singleSize');
+const singleFrame = document.getElementById('singleFrame');
+
+// Content type switching
+function setSingleEditMode(type) {
+    singleEditType = type;
+    document.querySelectorAll('#tab-single .edit-type-card').forEach(function(c) { c.classList.toggle('active', c.dataset.etype === type); });
+    document.getElementById('singleUrlPanel').style.display = (type==='url') ? '' : 'none';
+    document.getElementById('singleTextPanel').style.display = (type==='text') ? '' : 'none';
+    document.getElementById('singleImagePanel').style.display = (type==='image') ? '' : 'none';
+    document.getElementById('singleMarkdownPanel').style.display = (type==='markdown') ? '' : 'none';
+    if (type==='markdown') setTimeout(function(){ mdUpdateSinglePreview(); }, 50);
+    generateSingleQR();
+}
+
+// Get the raw content for QR encoding (no dyn.html prefixes needed for qr.html)
+function getSingleContent() {
+    if (singleEditType === 'url') return document.getElementById('singleText').value.trim();
+    if (singleEditType === 'text') return document.getElementById('singleRichEditor').innerHTML.trim();
+    if (singleEditType === 'image') return document.getElementById('singleImageUrl').value.trim();
+    if (singleEditType === 'markdown') return document.getElementById('singleMdTextarea').value.trim();
+    return '';
+}
+
+// Image handling — upload to server, then encode the returned URL
+function handleSingleImageUpload(files) {
+    if (!files || !files.length) return;
+    var f = files[0];
+    if (f.size > 5 * 1024 * 1024) { showToast('图片不超过5MB', 'error'); return; }
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        // Compress large images
+        var img = new Image();
+        img.onload = function() {
+            var c = document.createElement('canvas');
+            var maxW = 900, w = img.width, h = img.height;
+            if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+            c.width = w; c.height = h;
+            c.getContext('2d').drawImage(img, 0, 0, w, h);
+            singleImageData = c.toDataURL('image/jpeg', 0.85);
+            document.getElementById('singleImagePreview').src = singleImageData;
+            document.getElementById('singleImagePreviewWrap').style.display = '';
+            document.getElementById('singleImageUploadArea').style.display = 'none';
+            // Upload to server to get a short URL for the QR code
+            fetch('/api/upload_image.php', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({data: singleImageData})
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(result) {
+                if (result.success && result.url) {
+                    document.getElementById('singleImageUrl').value = result.url;
+                    generateSingleQR();
+                } else {
+                    showToast('图片上传失败: ' + (result.error || '服务器错误'), 'error');
+                }
+            })
+            .catch(function() {
+                showToast('图片上传失败: 网络错误', 'error');
+            });
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(f);
+}
+function clearSingleImage() {
+    singleImageData = null;
+    document.getElementById('singleImageFile').value = '';
+    document.getElementById('singleImageUrl').value = '';
+    document.getElementById('singleImagePreviewWrap').style.display = 'none';
+    document.getElementById('singleImageUploadArea').style.display = '';
+    generateSingleQR();
+}
+
+// Markdown preview
+function mdUpdateSinglePreview() {
+    var ta = document.getElementById('singleMdTextarea');
+    var prev = document.getElementById('singleMdPreview');
+    if (!ta || !prev) return;
+    var raw = ta.value;
+    if (!raw.trim()) { prev.innerHTML = '<span class="md-editor-empty">开始输入 Markdown，此处显示实时预览</span>'; return; }
+    if (typeof marked !== 'undefined') { prev.innerHTML = marked.parse(raw); }
+    else { prev.innerHTML = '<pre style="white-space:pre-wrap">' + escHtml(raw) + '</pre>'; }
+}
+
+// Rich editor helpers
+var _lastRichEditor = null;
+document.addEventListener('focusin', function(e) {
+    if (e.target.classList.contains('rich-editor')) _lastRichEditor = e.target;
+});
+function execRichCmd(cmd, val) {
+    if (_lastRichEditor) _lastRichEditor.focus();
+    else {
+        var eds = document.querySelectorAll('.rich-editor');
+        for (var i = 0; i < eds.length; i++) {
+            if (eds[i].offsetParent !== null) { _lastRichEditor = eds[i]; _lastRichEditor.focus(); break; }
+        }
+    }
+    document.execCommand(cmd, false, val || null);
+}
+
+// Show/hide label options based on whether label text exists
+singleLabel.addEventListener('input', () => {
+    document.getElementById('singleLabelOptions').style.display = singleLabel.value.trim() ? '' : 'none';
+    generateSingleQR();
+});
+// Auto-generate on any input change
+singleText.addEventListener('input', function() { if(singleEditType==='url') generateSingleQR(); });
+singleEC.addEventListener('change', function() { generateSingleQR(); });
+singleFg.addEventListener('input', function() { document.getElementById('singleFgHex').textContent = singleFg.value; generateSingleQR(); });
+singleBg.addEventListener('input', function() { document.getElementById('singleBgHex').textContent = singleBg.value; generateSingleQR(); });
+singleSize.addEventListener('input', function() {
+    document.getElementById('singleSizeVal').textContent = parseInt(singleSize.value) + ' × ' + parseInt(singleSize.value);
+    updateSingleLabelFsHint();
+    generateSingleQR();
+});
+// Rich editor and other content inputs
+var singleRich = document.getElementById('singleRichEditor');
+if (singleRich) singleRich.addEventListener('input', function() { if(singleEditType==='text') generateSingleQR(); });
+var singleMdTa = document.getElementById('singleMdTextarea');
+if (singleMdTa) singleMdTa.addEventListener('input', function() { if(singleEditType==='markdown') generateSingleQR(); });
+var singleImgUrl = document.getElementById('singleImageUrl');
+if (singleImgUrl) singleImgUrl.addEventListener('input', function() { if(singleEditType==='image') generateSingleQR(); });
+
+document.getElementById('singleLabelFs').addEventListener('change', () => {
+    updateSingleLabelFsHint();
+    generateSingleQR();
+});
+document.getElementById('singleLabelColor').addEventListener('input', () => {
+    document.getElementById('singleLabelColorHex').textContent = document.getElementById('singleLabelColor').value;
+    generateSingleQR();
+});
+
+function updateSingleLabelFsHint() {
+    const sel = document.getElementById('singleLabelFs');
+    const hint = document.getElementById('singleLabelFsHint');
+    if (sel.value === 'auto') {
+        hint.textContent = '(当前: ' + getSingleAutoLabelFs() + ' pt)';
+    } else {
+        hint.textContent = '';
+    }
+}
+updateSingleLabelFsHint();
+
+
+// Logo handling (single)
+const singleLogo = document.getElementById('singleLogo');
+const singleLogoSizeSlider = document.getElementById('singleLogoSize');
+document.getElementById('singleLogoSize').addEventListener('input', () => { document.getElementById('singleLogoSizeVal').textContent = singleLogoSizeSlider.value + '%'; generateSingleQR(); });
+
+singleLogo.addEventListener('change', () => {
+    if (!singleLogo.files.length) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const img = new Image();
+        img.onload = () => { logoImg = img; document.getElementById('logoPreviewImg').src = e.target.result; document.getElementById('logoPreviewWrap').style.display = ''; generateSingleQR(); };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(singleLogo.files[0]);
+});
+document.getElementById('btnRemoveLogo').addEventListener('click', () => {
+    logoImg = null; singleLogo.value = ''; document.getElementById('logoPreviewWrap').style.display = 'none'; generateSingleQR();
+});
+
+function generateSingleQR() {
+    var text = getSingleContent();
+    var placeholder = document.getElementById('singleQrPlaceholder');
+    if (!text) {
+        placeholder.style.display = '';
+        document.getElementById('btnSinglePng').disabled = true;
+        document.getElementById('btnSinglePdf').disabled = true;
+        document.getElementById('btnSingleSvg').disabled = true;
+        var cc = document.getElementById('singleQrCanvas');
+        var cctx = cc.getContext('2d');
+        cctx.clearRect(0,0,cc.width,cc.height);
+        return;
+    }
+    placeholder.style.display = 'none';
+    try {
+        var qr = makeQR(text, singleEC.value); singleQR = qr;
+        var sz = parseInt(singleSize.value);
+        var c = document.getElementById('singleQrCanvas');
+        var ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, c.width, c.height);
+
+        // Draw ruler and get drawing area
+        var RM = drawRuler(ctx, c.width, c.height);
+        var drawArea = c.width - RM; // 970
+
+        // Draw QR centered in the draw area
+        var qrCanvas = qrToCanvas(qr, singleFg.value, singleBg.value, sz);
+        if (logoImg) applyLogoToCanvas(qrCanvas, logoImg, parseInt(singleLogoSizeSlider.value));
+
+        var qrX = RM + Math.floor((drawArea - sz) / 2);
+        var qrY = RM + Math.floor((drawArea - sz) / 2);
+        ctx.drawImage(qrCanvas, qrX, qrY, sz, sz);
+
+        // Draw size indicator dashed box
+        if (sz < drawArea) {
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.setLineDash([4,4]);
+            ctx.strokeRect(qrX, qrY, sz, sz);
+            ctx.setLineDash([]);
+        }
+
+        // Draw label on canvas (below QR, moves with QR size changes)
+        var label = singleLabel.value.trim();
+        var labelEl = document.getElementById('singleLabelView');
+        if (labelEl) labelEl.remove(); // remove old DOM label
+
+        if (label) {
+            var labelFs = resolveSingleLabelFs();
+            var labelColor = document.getElementById('singleLabelColor').value;
+            // Position label below the QR area
+            var labelY = qrY + sz + Math.round((RM + drawArea - qrY - sz) / 2);
+            if (labelY > c.height - 10) labelY = c.height - 10;
+            ctx.fillStyle = labelColor;
+            ctx.font = labelFs + 'px ' + CJK_FONT;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            // Wrap long text
+            var maxW = drawArea - 20;
+            var words = label.split('');
+            var lines = [];
+            var cur = '';
+            for (var i = 0; i < words.length; i++) {
+                var test = cur + words[i];
+                if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = words[i]; }
+                else cur = test;
+            }
+            if (cur) lines.push(cur);
+            var lineH = Math.round(labelFs * 1.4);
+            var startY = labelY - ((lines.length - 1) * lineH) / 2;
+            for (var li = 0; li < lines.length; li++) {
+                ctx.fillText(lines[li], c.width / 2, startY + li * lineH);
+            }
+        }
+
+        document.getElementById('btnSinglePng').disabled = false;
+        document.getElementById('btnSinglePdf').disabled = false;
+        document.getElementById('btnSingleSvg').disabled = false;
+    } catch(e) { showToast('生成失败: ' + e, 'error'); }
+}
+
+document.getElementById('btnSinglePng').addEventListener('click', () => {
+    if (!singleQR) return;
+    const sz = parseInt(singleSize.value);
+    const canvas = qrToCanvas(singleQR, singleFg.value, singleBg.value, sz);
+    if (logoImg) applyLogoToCanvas(canvas, logoImg, parseInt(singleLogoSizeSlider.value));
+    const labelFontSize = resolveSingleLabelFs();
+    const labelColor = document.getElementById('singleLabelColor').value;
+    downloadCanvas(makeLabelCanvas(canvas, singleLabel.value.trim(), labelColor, singleBg.value, labelFontSize), 'qrcode.png');
+});
+
+document.getElementById('btnSingleSvg').addEventListener('click', () => {
+    if (!singleQR) return;
+    const sz = parseInt(singleSize.value), mc = singleQR.getModuleCount();
+    const cell = Math.max(1, Math.floor(sz / mc)), total = mc * cell;
+    let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + total + '" height="' + total + '" viewBox="0 0 ' + total + ' ' + total + '">';
+    svg += '<rect width="' + total + '" height="' + total + '" fill="' + singleBg.value + '"/>';
+    for (let r = 0; r < mc; r++) for (let c = 0; c < mc; c++) if (singleQR.isDark(r, c)) svg += '<rect x="' + (c*cell) + '" y="' + (r*cell) + '" width="' + cell + '" height="' + cell + '" fill="' + singleFg.value + '"/>';
+    svg += '</svg>';
+    const blob = new Blob([svg], {type:'image/svg+xml'});
+    const a = document.createElement('a'); a.download = 'qrcode.svg'; a.href = URL.createObjectURL(blob); a.click(); URL.revokeObjectURL(a.href);
+});
+
+document.getElementById('btnSinglePdf').addEventListener('click', () => {
+    if (!singleQR) return;
+    const sz = parseInt(singleSize.value);
+    exportSinglePDF(singleQR, singleFg.value, singleBg.value, sz, singleLabel.value.trim());
+});
+
+function exportSinglePDF(qr, fg, bg, size, label) {
+    const { jsPDF } = window.jspdf;
+    const canvas = qrToCanvas(qr, fg, bg, size);
+    if (logoImg) applyLogoToCanvas(canvas, logoImg, parseInt(singleLogoSizeSlider.value));
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
+    const qrMM = Math.min(pw - 30, ph - 40);
+    const x = (pw - qrMM) / 2, y = (ph - qrMM) / 2 - (label ? 10 : 0);
+    pdf.addImage(imgData, 'PNG', x, y, qrMM, qrMM);
+    if (label) {
+        const fs = resolveSingleLabelFs();
+        const labelColor = document.getElementById('singleLabelColor').value;
+        const labelCanvas = renderLabelAsCanvasImage(label, fs, labelColor, Math.round(qrMM * 3.78));
+        const labelImgData = labelCanvas.toDataURL('image/png');
+        const labelMM = Math.round(fs * 0.353) * 2.5;
+        pdf.addImage(labelImgData, 'PNG', x, y + qrMM + 2, qrMM, labelMM);
+    }
+    pdf.save('qrcode.pdf');
+}
+
+// Default logo - QR Forge brand mark
+const DEFAULT_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00d4ff"/>
+      <stop offset="100%" stop-color="#0090ff"/>
+    </linearGradient>
+  </defs>
+  <rect fill="url(#bg)" width="200" height="200" rx="30"/>
+  <text x="100" y="130" text-anchor="middle" font-size="88" font-weight="900" fill="white" font-family="Arial,Helvetica,sans-serif" letter-spacing="-4">QR</text>
+  <rect fill="white" x="16" y="16" width="32" height="32" rx="4"/>
+  <rect fill="#0090ff" x="22" y="22" width="20" height="20" rx="2"/>
+  <rect fill="white" x="22" y="22" width="9" height="9"/>
+  <rect fill="white" x="33" y="22" width="9" height="9"/>
+  <rect fill="white" x="22" y="33" width="9" height="9"/>
+  <rect fill="white" x="33" y="33" width="9" height="9"/>
+  <rect fill="white" x="16" y="152" width="24" height="24" rx="3"/>
+  <rect fill="#0090ff" x="21" y="157" width="14" height="14" rx="1"/>
+  <rect fill="white" x="21" y="157" width="6" height="6"/>
+  <rect fill="white" x="29" y="157" width="6" height="6"/>
+  <rect fill="white" x="21" y="165" width="6" height="6"/>
+  <rect fill="white" x="29" y="165" width="6" height="6"/>
+</svg>`;
+const DEFAULT_LOGO_URL = 'data:image/svg+xml;base64,' + btoa(DEFAULT_LOGO_SVG);
+
+// Load default logo on page start
+function loadDefaultLogo() {
+    const img = new Image();
+    img.onload = () => {
+        logoImg = img;
+        document.getElementById('logoPreviewImg').src = DEFAULT_LOGO_URL;
+        document.getElementById('logoPreviewWrap').style.display = '';
+    };
+    img.src = DEFAULT_LOGO_URL;
+}
+loadDefaultLogo();
+
+window.addEventListener('DOMContentLoaded', () => generateSingleQR());
+
+// ===== BATCH MODE =====
+const batchFile = document.getElementById('batchFile');
+const batchUpload = document.getElementById('batchUpload');
+
+batchUpload.addEventListener('click', () => batchFile.click());
+batchUpload.addEventListener('dragover', e => { e.preventDefault(); batchUpload.style.borderColor = 'var(--accent)'; });
+batchUpload.addEventListener('dragleave', () => batchUpload.style.borderColor = '');
+batchUpload.addEventListener('drop', e => { e.preventDefault(); batchUpload.style.borderColor = ''; if (e.dataTransfer.files.length) parseFile(e.dataTransfer.files[0]); });
+batchFile.addEventListener('change', () => { if (batchFile.files.length) parseFile(batchFile.files[0]); });
+
+// Download demo Excel (embedded user template)
+document.getElementById('btnDownloadDemo').addEventListener('click', () => {
+    const b64 = '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';
+    const bytes = atob(b64);
+    const ab = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) ab[i] = bytes.charCodeAt(i);
+    const blob = new Blob([ab], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a');
+    a.download = 'QRForge_批量模板.xlsx';
+    a.href = URL.createObjectURL(blob);
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('演示模板已下载！', 'success');
+});
+
+// Batch Logo handling
+const batchLogo = document.getElementById('batchLogo');
+const batchLogoSizeSlider = document.getElementById('batchLogoSize');
+document.getElementById('batchLogoSize').addEventListener('input', () => {
+    document.getElementById('batchLogoSizeVal').textContent = batchLogoSizeSlider.value + '%';
+    renderBatchTable();
+});
+
+batchLogo.addEventListener('change', () => {
+    if (!batchLogo.files.length) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        const img = new Image();
+        img.onload = () => { batchLogoImg = img; document.getElementById('batchLogoPreviewImg').src = e.target.result; document.getElementById('batchLogoPreviewWrap').style.display = ''; renderBatchTable(); };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(batchLogo.files[0]);
+});
+document.getElementById('btnRemoveBatchLogo').addEventListener('click', () => {
+    batchLogoImg = null; batchLogo.value = ''; document.getElementById('batchLogoPreviewWrap').style.display = 'none'; renderBatchTable();
+});
+
+function parseFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(ws, { header: 1 });
+            if (json.length < 2) { showToast('文件数据不足', 'error'); return; }
+            batchHeaders = json[0].map((h, i) => h || ('列'+(i+1)));
+            batchRows = json.slice(1).filter(row => row.some(cell => cell != null && cell !== ''));
+            // Deep copy for reset
+            originalBatchRows = batchRows.map(row => [...row]);
+            undoStack = [];
+            initBatchUI();
+            showToast('导入成功: ' + batchRows.length + ' 行', 'success');
+        } catch(e) { showToast('文件解析失败: ' + e, 'error'); }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+document.getElementById('btnBatchClear').addEventListener('click', () => {
+    batchRows = []; batchHeaders = []; originalBatchRows = []; undoStack = [];
+    document.getElementById('batchDataPanel').style.display = 'none';
+    document.getElementById('batchStylePanel').style.display = 'none';
+    batchFile.value = '';
+    showToast('已清空');
+});
+
+function initBatchUI() {
+    document.getElementById('batchDataPanel').style.display = '';
+    document.getElementById('batchStylePanel').style.display = '';
+    const cc = document.getElementById('colContent'), cl = document.getElementById('colLabel');
+    cc.innerHTML = ''; cl.innerHTML = '<option value="">无标签</option>';
+    batchHeaders.forEach((h, i) => {
+        cc.innerHTML += '<option value="'+i+'">'+h+'</option>';
+        cl.innerHTML += '<option value="'+i+'">'+h+'</option>';
+    });
+    if (batchHeaders.length > 1) cl.value = '1';
+    sortCol = -1; sortDir = {};
+    renderBatchTable();
+}
+
+// Column change triggers re-render
+document.getElementById('colContent').addEventListener('change', renderBatchTable);
+document.getElementById('colLabel').addEventListener('change', renderBatchTable);
+document.getElementById('batchSearch').addEventListener('input', renderBatchTable);
+document.getElementById('pdfLabelSize').addEventListener('change', renderBatchTable);
+
+// Batch style listeners
+document.getElementById('batchFg').addEventListener('input', () => { document.getElementById('batchFgHex').textContent = document.getElementById('batchFg').value; renderBatchTable(); });
+document.getElementById('batchBg').addEventListener('input', () => { document.getElementById('batchBgHex').textContent = document.getElementById('batchBg').value; renderBatchTable(); });
+document.getElementById('batchEC').addEventListener('change', renderBatchTable);
+document.getElementById('batchSize').addEventListener('input', () => {
+    document.getElementById('batchSizeVal').textContent = parseInt(document.getElementById('batchSize').value) + ' × ' + parseInt(document.getElementById('batchSize').value);
+    renderBatchTable();
+});
+
+function renderBatchTable() {
+    if (!batchHeaders.length) return;
+    const head = document.getElementById('batchHead');
+    const body = document.getElementById('batchBody');
+    const search = document.getElementById('batchSearch').value.toLowerCase();
+
+    head.innerHTML = '<tr>' + batchHeaders.map((h,i) => '<th data-col="'+i+'">'+h+(sortDir[i]||'')+'</th>').join('') + '<th style="width:50px">二维码</th></tr>';
+
+    let filtered = batchRows.filter(row => row.some(cell => String(cell||'').toLowerCase().includes(search)));
+    if (sortCol >= 0 && sortDir[sortCol]) {
+        filtered.sort((a,b) => {
+            const va = String(a[sortCol]||''), vb = String(b[sortCol]||'');
+            return sortDir[sortCol]==='↑' ? va.localeCompare(vb) : vb.localeCompare(va);
+        });
+    }
+
+    const ci = parseInt(document.getElementById('colContent').value)||0;
+    const li = document.getElementById('colLabel').value;
+    const fg = document.getElementById('batchFg').value;
+    const bg = document.getElementById('batchBg').value;
+    const ec = document.getElementById('batchEC').value;
+    const sz = parseInt(document.getElementById('batchSize').value);
+    const labelFs = resolvePdfLabelFs();
+    const batchLogoRatio = parseInt(batchLogoSizeSlider.value);
+
+    body.innerHTML = '';
+    filtered.forEach((row, ri) => {
+        const tr = document.createElement('tr');
+        const contentText = String(row[ci]||'');
+        const labelText = li ? String(row[parseInt(li)]||'') : '';
+
+        batchHeaders.forEach((_, colIdx) => {
+            const td = document.createElement('td');
+            td.textContent = String(row[colIdx]||'');
+            td.title = String(row[colIdx]||'');
+            td.addEventListener('dblclick', () => startEdit(td, ri, colIdx));
+            tr.appendChild(td);
+        });
+
+        // QR mini with logo
+        const qrTd = document.createElement('td');
+        try {
+            if (contentText) {
+                const qr = makeQR(contentText, ec);
+                const miniCanvas = qrToCanvas(qr, fg, bg, 80);
+                if (batchLogoImg) applyLogoToCanvas(miniCanvas, batchLogoImg, batchLogoRatio);
+                miniCanvas.className = 'qr-mini';
+                miniCanvas.title = '点击下载 PNG';
+                miniCanvas.addEventListener('click', () => {
+                    const dlCanvas = qrToCanvas(qr, fg, bg, sz);
+                    if (batchLogoImg) applyLogoToCanvas(dlCanvas, batchLogoImg, batchLogoRatio);
+                    downloadCanvas(makeLabelCanvas(dlCanvas, labelText, fg, bg, labelFs), 'qr_'+contentText.slice(0,20).replace(/[^\w\u4e00-\u9fa5]/g,'_')+'.png');
+                });
+                qrTd.appendChild(miniCanvas);
+            }
+        } catch(e) { qrTd.textContent = '错误'; }
+        tr.appendChild(qrTd);
+        body.appendChild(tr);
+    });
+
+    document.getElementById('statTotal').textContent = batchRows.length;
+    document.getElementById('statFiltered').textContent = filtered.length;
+    document.getElementById('batchCount').textContent = filtered.length + ' 行';
+    updateUndoUI();
+}
+
+// Sort on header click
+document.addEventListener('click', e => {
+    const th = e.target.closest('th[data-col]');
+    if (!th) return;
+    const col = parseInt(th.dataset.col);
+    if (sortCol === col) { sortDir[col] = sortDir[col]==='↑'?'↓':'↑'; }
+    else { sortCol = col; sortDir={}; sortDir[col]='↑'; }
+    renderBatchTable();
+});
+
+// Cell editing
+let editingTd = null;
+function startEdit(td, ri, ci) {
+    if (editingTd) finishEdit();
+    const oldVal = batchRows[ri][ci] || '';
+    editingTd = { td, ri, ci, oldVal };
+    td.innerHTML = '';
+    const input = document.createElement('input');
+    input.className = 'cell-edit'; input.value = oldVal;
+    input.addEventListener('keydown', e => {
+        if (e.key==='Enter') finishEdit();
+        if (e.key==='Escape') { td.textContent=oldVal; editingTd=null; }
+    });
+    input.addEventListener('blur', finishEdit);
+    td.appendChild(input);
+    input.focus(); input.select();
+}
+
+function finishEdit() {
+    if (!editingTd) return;
+    const {td, ri, ci, oldVal} = editingTd;
+    const input = td.querySelector('input');
+    if (!input) { editingTd=null; return; }
+    const newVal = input.value;
+    if (newVal !== String(oldVal)) {
+        undoStack.push({ ri, ci, oldVal: batchRows[ri][ci], newVal });
+        batchRows[ri][ci] = newVal;
+    }
+    td.textContent = newVal; editingTd=null;
+    renderBatchTable();
+}
+
+// Undo + Reset (no redo - reset restores original uploaded state)
+function updateUndoUI() {
+    const btnUndo = document.getElementById('btnUndo');
+    const btnReset = document.getElementById('btnReset');
+    const canUndo = undoStack.length > 0;
+    const canReset = originalBatchRows.length > 0 && undoStack.length > 0;
+    btnUndo.disabled = !canUndo;
+    btnReset.disabled = !canReset;
+    document.getElementById('undoInfo').textContent = canUndo ? ('可撤销 '+undoStack.length+' 步') : '';
+}
+
+document.getElementById('btnUndo').addEventListener('click', () => {
+    if (!undoStack.length) return;
+    const act = undoStack.pop();
+    batchRows[act.ri][act.ci] = act.oldVal;
+    renderBatchTable();
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+    if (!originalBatchRows.length) return;
+    batchRows = originalBatchRows.map(row => [...row]);
+    undoStack = [];
+    renderBatchTable();
+    showToast('已重置为原始上传数据', 'success');
+});
+
+// Keyboard shortcuts (Ctrl+Z only, no Ctrl+Y redo)
+document.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.key==='z') { e.preventDefault(); document.getElementById('btnUndo').click(); }
+});
+
+// ===== PDF EXPORT =====
+document.getElementById('btnBatchPdf').addEventListener('click', () => {
+    if (!batchRows.length) { showToast('请先导入数据','error'); return; }
+    exportBatchPDF(false);
+});
+document.getElementById('btnBatchPreviewPdf').addEventListener('click', () => {
+    if (!batchRows.length) { showToast('请先导入数据','error'); return; }
+    exportBatchPDF(true);
+});
+
+function exportBatchPDF(previewOnly) {
+    const { jsPDF } = window.jspdf;
+    const ci = parseInt(document.getElementById('colContent').value)||0;
+    const li = document.getElementById('colLabel').value;
+    const fg = document.getElementById('batchFg').value;
+    const bg = document.getElementById('batchBg').value;
+    const ec = document.getElementById('batchEC').value;
+    const cols = parseInt(document.getElementById('pdfCols').value);
+    const rows = parseInt(document.getElementById('pdfRows').value);
+    const batchLogoRatio = parseInt(batchLogoSizeSlider.value);
+    const batchSz = parseInt(document.getElementById('batchSize').value); // pixel size affects QR detail
+
+    const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
+    const margin = 10;
+    const cellW = (pw - 2*margin)/cols;
+    const cellH = (ph - 2*margin)/rows;
+    // Map batchSize (100-400) to QR fill ratio (0.55-0.98)
+    var fillRatio = 0.55 + (batchSz - 100) * 0.43 / 300;
+    if (fillRatio < 0.3) fillRatio = 0.3; if (fillRatio > 1) fillRatio = 1;
+    var qrSizeMM_raw = Math.min(cellW, cellH) * fillRatio;
+    // Estimate label size
+    var labelFs = resolvePdfLabelFs(qrSizeMM_raw);
+    var labelMM = li ? labelFs * 0.353 * 2.5 + 4 : 0;
+    var qrSizeMM = Math.min(qrSizeMM_raw, Math.min(cellW - 4, cellH - labelMM));
+
+    let perPage = cols * rows;
+
+    const search = document.getElementById('batchSearch').value.toLowerCase();
+    let data = batchRows.filter(row => row.some(cell => String(cell||'').toLowerCase().includes(search)));
+
+    data.forEach((row, idx) => {
+        const posInPage = idx % perPage;
+        if (posInPage===0 && idx>0) { pdf.addPage(); }
+        const col = posInPage % cols;
+        const rowNum = Math.floor(posInPage / cols);
+        const x = margin + col*cellW + (cellW - qrSizeMM)/2;
+        const y = margin + rowNum*cellH;
+
+        const contentText = String(row[ci]||'');
+        const labelText = li ? String(row[parseInt(li)]||'') : '';
+
+        try {
+            const qr = makeQR(contentText, ec);
+            const qrSize = parseInt(document.getElementById('batchSize').value);
+            const canvas = qrToCanvas(qr, fg, bg, qrSize);
+            if (batchLogoImg) applyLogoToCanvas(canvas, batchLogoImg, batchLogoRatio);
+            const imgData = canvas.toDataURL('image/png');
+            pdf.addImage(imgData, 'PNG', x, y, qrSizeMM, qrSizeMM);
+            if (labelText) {
+                // Render Chinese labels as canvas image (jsPDF can't handle CJK natively)
+                const labelCanvas = renderLabelAsCanvasImage(labelText, labelFs, fg, Math.round(qrSizeMM * 3.78));
+                const labelImgData = labelCanvas.toDataURL('image/png');
+                const labelMM = labelFs * 0.353 * 2.5; // pt -> mm conversion
+                pdf.addImage(labelImgData, 'PNG', x, y + qrSizeMM + 1, qrSizeMM, labelMM);
+            }
+        } catch(e) {
+            // Error fallback - use canvas-based text
+            const errCanvas = renderLabelAsCanvasImage('生成错误', 8, '#ff0000', 100);
+            pdf.addImage(errCanvas.toDataURL('image/png'), 'PNG', x, y, 20, 5);
+        }
+    });
+
+    if (previewOnly) {
+        const pdfUrl = pdf.output('bloburl');
+        window.open(pdfUrl, '_blank');
+        showToast('PDF 预览已打开', 'success');
+    } else {
+        pdf.save('qr_batch.pdf');
+        showToast('PDF 导出完成', 'success');
+    }
+}
+
+// ===== QR helpers for export only =====
+function downloadCanvas(canvas, filename) {
+    const a = document.createElement('a'); a.download = filename; a.href = canvas.toDataURL('image/png'); a.click();
+}
+
+</script>
+</body>
+</html>
