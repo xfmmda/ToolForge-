@@ -98,7 +98,7 @@ body{background:#0a0e27;color:#e0e6ff;font-family:-apple-system,BlinkMacSystemFo
         <div class="tool-card" onclick="showRegAccountModal()" style="cursor:pointer">
             <span class="tool-icon">📝</span>
             <div class="tool-title">注册账号</div>
-            <div class="tool-desc">输入用户名获取管理员联系方式</div>
+            <div class="tool-desc">选择服务模块，输入用户名获取管理员联系方式</div>
             <span class="tool-tag tag-available">可用</span>
         </div>
     </div>
@@ -112,24 +112,48 @@ body{background:#0a0e27;color:#e0e6ff;font-family:-apple-system,BlinkMacSystemFo
     </div>
 </div>
 <script>
-// 注册账号 - 输入用户名后显示联系邮箱
+// 注册账号 - 先选模块，再输用户名
+var regModule = ''; // 存储选择的模块
+
 function showRegAccountModal(){
+    regModule = '';
     var o=document.createElement('div');o.className='modal-overlay visible';
     o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999';
-    o.innerHTML='<div style="background:#1a1f35;border:1px solid rgba(0,212,255,.15);border-radius:16px;padding:28px 24px;max-width:400px;width:90%"><div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:8px;text-align:center">📝 注册账号</div><div style="font-size:13px;color:#888;margin-bottom:16px;text-align:center" id="_regAccountMsg">请输入你的用户名，获取管理员联系方式</div><input type="text" id="_regUserInput" placeholder="你的用户名" autofocus style="width:100%;background:rgba(0,14,39,.8);border:1px solid rgba(0,212,255,.15);border-radius:10px;color:#fff;font-size:14px;padding:12px 14px;outline:none;font-family:inherit;margin-bottom:12px"><div style="color:#ff4757;font-size:13px;margin-bottom:10px;text-align:center;display:none" id="_regUserError">请输入用户名</div><div style="display:flex;gap:10px;margin-top:16px"><button onclick="doRegAccount()" style="flex:1;padding:10px;background:linear-gradient(135deg,#00d4ff,#0090ff);color:#fff;font-size:14px;font-weight:600;border:none;border-radius:10px;cursor:pointer">确定</button><button onclick="this.closest(\'.modal-overlay\').remove()" style="flex:1;padding:10px;background:rgba(255,71,87,.1);color:#ff4757;font-size:14px;font-weight:600;border:1px solid rgba(255,71,87,.3);border-radius:10px;cursor:pointer">取消</button></div></div>';
+    o.innerHTML='<div style="background:#1a1f35;border:1px solid rgba(0,212,255,.15);border-radius:16px;padding:28px 24px;max-width:400px;width:90%"><div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:8px;text-align-center">📝 注册账号</div><div style="font-size:13px;color:#888;margin-bottom:16px;text-align:center" id="_regStep">请选择要注册的服务模块</div><div style="display:flex;gap:10px;margin-bottom:12px" id="_regModuleSelect"><button onclick="selectModule(\'kongma\')" style="flex:1;padding:14px 10px;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2);color:#fff;font-size:14px;font-weight:600;border-radius:10px;cursor:pointer;transition:all .2s">🔗<br>空码管理</button><button onclick="selectModule(\'huohua\')" style="flex:1;padding:14px 10px;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.2);color:#fff;font-size:14px;font-weight:600;border-radius:10px;cursor:pointer;transition:all .2s">🔥<br>抖音续火花</button></div><div id="_regUsernameSection" style="display:none"><input type="text" id="_regUserInput" placeholder="请输入你的用户名" autofocus style="width:100%;background:rgba(0,14,39,.8);border:1px solid rgba(0,212,255,.15);border-radius:10px;color:#fff;font-size:14px;padding:12px 14px;outline:none;font-family:inherit;margin-bottom:12px"><div style="color:#ff4757;font-size:13px;margin-bottom:10px;text-align:center;display:none" id="_regUserError">请输入用户名</div></div><div style="display:flex;gap:10px;margin-top:16px"><button onclick="doRegAccount()" id="_regActionBtn" style="flex:1;padding:10px;background:linear-gradient(135deg,#00d4ff,#0090ff);color:#fff;font-size:14px;font-weight:600;border:none;border-radius:10px;cursor:pointer">确定</button><button onclick="this.closest(\'.modal-overlay\').remove()" style="flex:1;padding:10px;background:rgba(255,71,87,.1);color:#ff4757;font-size:14px;font-weight:600;border:1px solid rgba(255,71,87,.3);border-radius:10px;cursor:pointer">取消</button></div></div>';
     o.addEventListener('click',function(e){if(e.target===o)o.remove()});document.body.appendChild(o);
-    document.getElementById('_regUserInput').addEventListener('keydown',function(e){if(e.key==='Enter')doRegAccount()});
 }
+
+function selectModule(mod){
+    regModule = mod;
+    document.getElementById('_regModuleSelect').style.display='none';
+    document.getElementById('_regUsernameSection').style.display='block';
+    var moduleName = mod==='kongma'?'空码管理':'抖音续火花';
+    document.getElementById('_regStep').textContent='正在注册【'+moduleName+'】服务，请输入用户名';
+    var input=document.getElementById('_regUserInput');
+    input.focus();
+    if(!document.getElementById('_regUsernameSection').addEventListener){
+        input.addEventListener('keydown',function(e){if(e.key==='Enter')doRegAccount()});
+    }
+}
+
 function doRegAccount(){
+    if(!regModule){
+        document.getElementById('_regUserError').style.display='';
+        return;
+    }
     var username=document.getElementById('_regUserInput').value.trim();
     if(!username){document.getElementById('_regUserError').style.display='';return;}
     document.getElementById('_regUserError').style.display='none';
     var email=username+'@xfmmda.cc.cd';
-    var msgEl=document.getElementById('_regAccountMsg');
-    msgEl.textContent='如需注册账号，请通过以下邮箱联系管理员：';
-    var btns=document.querySelector('.modal-overlay.visible > div > div:last-of-type');
+    var msgEl=document.getElementById('_regStep');
+    
+    var moduleName = regModule==='kongma'?'空码管理':'抖音续火花';
+    msgEl.textContent='如需注册【'+moduleName+'】账号，请通过以下邮箱联系管理员：';
+    
     var actionDiv=document.createElement('div');actionDiv.style.cssText='margin-top:16px;text-align:center';
     actionDiv.innerHTML='<div style="background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.15);border-radius:10px;padding:14px;margin-bottom:16px;text-align:center"><div style="font-size:12px;color:#888;margin-bottom:6px">📧 联系邮箱</div><div style="font-size:20px;color:#00d4ff;font-weight:700;letter-spacing:1px">'+email+'</div><button onclick="var b=this;navigator.clipboard.writeText(\''+email+'\').then(function(){b.textContent=\'已复制！\';setTimeout(function(){b.textContent=\'复制邮箱\'},2000)})" style="margin-top:8px;width:100%;padding:6px 12px;background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.3);color:#00d4ff;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer">复制邮箱</button></div><div style="text-align:center"><a href="mailto:'+email+'" style="display:inline-block;padding:8px 24px;background:linear-gradient(135deg,#00d4ff,#0090ff);color:#fff;font-size:13px;font-weight:600;border-radius:8px;text-decoration:none">✉️ 发送邮件</a></div>';
+    
+    var btns=document.querySelector('.modal-overlay.visible > div > div:last-of-type');
     btns.parentElement.insertBefore(actionDiv,btns);
 }
 
